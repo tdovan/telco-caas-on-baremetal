@@ -1,0 +1,87 @@
+- hosts: localhost
+  vars:
+    - firmware_baseline_name: ''               #compulsary
+    - server_profile_name: ''       #compulsary
+    - config: "{{ playbook_dir }}/{{ oneview_config_admin }}"
+    - overriddenSettings : []
+  tasks:
+    - debug:
+        msg: "Mandatory input parameters server_profile_name, firmware_baseline_name"
+      when: server_profile_name == "" or firmware_baseline_name == ""
+    - meta: end_play
+      when: server_profile_name == "" or firmware_baseline_name == ""
+
+    - name: Gather facts about a Server Profile by name
+      oneview_server_profile_facts:
+        config: "{{ config }}"
+        name: "{{server_profile_name}}"
+      delegate_to: localhost
+
+    - debug: var=server_profiles
+
+    - debug:
+        msg: "Server profile should exist to modify bios core setting"
+      when: server_profiles|length == 0
+    - meta: end_play
+      when: server_profiles|length == 0
+
+
+    - set_fact:
+        server_profile_uri: '{{ server_profiles[0].uri }}'
+
+    - name: Gather facts about all Server Hardwares
+      oneview_server_hardware_facts:
+        config: "{{ config }}"
+        params:
+          filter:
+            - serverProfileUri='{{ server_profile_uri }}'
+      delegate_to: localhost
+
+    - debug:
+        var: server_hardwares
+
+    - debug:
+        msg: "Unforseen error: Server hardware was not fetched"
+      when: server_hardwares|length == 0
+    - meta: end_play
+      when: server_hardwares|length == 0
+
+    - set_fact:
+        server_hardware_name: '{{ server_hardwares[0].name }}'
+
+    - name: Power Off the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "Off"
+                powerControl: "MomentaryPress"
+      delegate_to: localhost
+
+    - name: Update Server Profile
+      oneview_server_profile:
+        config: "{{ config }}"
+        state: "present"
+        data:
+          name: "{{ server_profile_name }}"
+          affinity: "BayAndServer"
+          firmware:
+            manageFirmware: true
+            firmwareBaselineName: "{{ firmware_baseline_name }}"
+            firmwareInstallType: "FirmwareAndOSDrivers"
+            forceInstallFirmware: false
+      delegate_to: localhost
+      register: result
+
+    - name: Power On the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "On"
+                powerControl: "MomentaryPress"
+      delegate_to: localhost

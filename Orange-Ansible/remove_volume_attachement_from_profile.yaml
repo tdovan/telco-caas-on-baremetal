@@ -1,0 +1,105 @@
+# Fetch the server profile using name
+# Fetch the san volume logical jbod data
+#Remove san volumes from profile 
+
+- hosts: localhost
+  vars:
+    - server_profile_name: ''        #compulsary
+    - config: '{{ playbook_dir }}/{{ oneview_config }}'
+    - volume_name: ''                         #compulsary
+    - volume_attachments: []                  #for execution purpose only
+    - remove_volume_attachements: []          #for execution purpose only
+    - volume_uris: []
+  tasks:
+    - debug:
+        msg: "Mandatory input parameters server_profile_name, volume_name"
+      when: server_profile_name == "" or volume_name == ''
+    - meta: end_play
+      when: server_profile_name == "" or volume_name == ''
+
+    - name: Gather facts about a Server Profile by name
+      oneview_server_profile_facts:
+        config: "{{ config }}"
+        name: "{{server_profile_name}}"
+      delegate_to: localhost
+    - set_fact:
+        server_profile_uri: '{{ server_profiles[0].uri }}'
+
+    - debug:
+        msg: "Server Profile not found. Check the name of profile used"
+      when: server_profiles|length == 0 and server_profiles[0].name == server_profile_name
+    - meta: end_play
+      when: server_profiles|length == 0 and server_profiles[0].name == server_profile_name
+
+    - name: Gather facts about the storage volume associated with the storage volume attachment
+      oneview_volume_facts:
+        config: "{{ config }}"
+        name: "{{ volume_name }}"
+      delegate_to: localhost
+
+    - set_fact: 
+        volume_uris: "{{ volume_uris + [ storage_volumes[0].uri ]}}"
+      when: storage_volumes| length > 0 and storage_volumes[0].name == volume_name
+
+    - debug:
+        msg: " Volume not found to delete"
+      when: storage_volumes|length == 0 and storage_volumes[0].name == volume_name
+    - meta: end_play
+      when: storage_volumes|length == 0 and storage_volumes[0].name == volume_name
+
+    - debug: var=server_profiles[0].sanStorage.volumeAttachments
+      when:  server_profiles[0].sanStorage is defined and server_profiles[0].sanStorage.volumeAttachments is defined
+
+    - debug: 
+        msg: "The server profile does not have volumeAttachments, kindly verify "
+      when: server_profiles[0].sanStorage.volumeAttachments|length == 0
+
+    - meta: end_play
+      when: server_profiles[0].sanStorage.volumeAttachments|length == 0
+
+    - set_fact:
+        server_profile_data: "{{ server_profiles[0] }}"
+        volume_uris: "{{ volume_uris| list }}"
+      when: server_profiles|length > 0
+    - meta: end_play
+      when: server_profiles|length == 0
+
+    - set_fact:
+        volume_attachments: "{{ server_profile_data.sanStorage.volumeAttachments }}"
+      when: server_profile_data.sanStorage is defined and server_profile_data.sanStorage.volumeAttachments is defined
+
+    - set_fact:
+        remove_volume_attachements: "{{ remove_volume_attachements + [ item.0 ] }}"
+      when: item[0].volumeUri  ==  item[1]
+      with_nested:
+        - "{{ volume_attachments }}"
+        - "{{ volume_uris }}"
+    - debug:
+        msg: "{{ remove_volume_attachements }}"
+
+    - debug: 
+        msg: "The server profile does not have volumeAttachments name that is being passed, kindly verify "
+      when: remove_volume_attachements|length == 0
+
+    - meta: end_play
+      when: remove_volume_attachements|length == 0
+
+    - set_fact:
+        volume_attachments: "{{ volume_attachments | difference(remove_volume_attachements)  }}"
+    - debug:
+        msg: "{{ volume_attachments }}"
+
+    - name: Remove sas logical jbod connection from exisitng profile 
+      oneview_server_profile:
+        config: "{{ config }}"
+        state: "present"
+        data:
+          name: "{{ server_profile_name }}"
+          sanStorage:
+            volumeAttachments: '{{ volume_attachments }}'
+      delegate_to: localhost
+      register: result
+      when: server_profiles is defined
+    - debug: msg="{{ result.msg }}"   
+
+

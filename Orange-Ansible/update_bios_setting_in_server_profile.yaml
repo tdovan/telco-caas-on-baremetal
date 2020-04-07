@@ -1,0 +1,114 @@
+- hosts: localhost
+  vars:
+    - enable_cores: 0               #compulsary
+    - server_profile_name: ''       #compulsary
+    - config: "{{ playbook_dir }}/{{ oneview_config }}"
+    - overriddenSettings : []
+  tasks:
+    - debug:
+        msg: "Mandatory input parameters server_profile_name, enable_cores"
+      when: server_profile_name == "" or enable_cores == 0
+    - meta: end_play
+      when: server_profile_name == "" or enable_cores == 0
+
+    - name: Gather facts about a Server Profile by name
+      oneview_server_profile_facts:
+        config: "{{ config }}"
+        name: "{{server_profile_name}}"
+      delegate_to: localhost
+
+    - debug: var=server_profiles
+
+    - debug:
+        msg: "Server profile should exist to modify bios core setting"
+      when: server_profiles|length == 0
+    - meta: end_play
+      when: server_profiles|length == 0
+
+
+    - set_fact:
+        server_profile_uri: '{{ server_profiles[0].uri }}'
+
+    - name: Gather facts about all Server Hardwares
+      oneview_server_hardware_facts:
+        config: "{{ config }}"
+        params:
+          filter:
+            - serverProfileUri='{{ server_profile_uri }}'
+      delegate_to: localhost
+
+    - debug:
+        var: server_hardwares
+
+    - debug:
+        msg: "Unforseen error: Server hardware was not fetched"
+      when: server_hardwares|length == 0
+    - meta: end_play
+      when: server_hardwares|length == 0
+
+    - set_fact:
+        server_hardware_model: '{{ server_hardwares[0].model }}'
+        server_hardware_name: '{{ server_hardwares[0].name }}'
+
+    - debug:
+        msg: '{{ server_hardware_model }}'
+
+    - set_fact:
+        overriddenSetting: >
+                            {"id": "EnabledCoresPerProc",
+                             "value": "{{ enable_cores }}" }
+      when: "'Gen10' in server_hardware_model"
+
+    - set_fact:
+        overriddenSetting: >
+                           {"id": "ProcCoreDisable", 
+                            "value": "{{ enable_cores }}"}
+      when: "'Gen9' in server_hardware_model"
+
+    # add all overriddenSettings except the cores eanbling one
+    - set_fact:
+        overriddenSettings: "{{ overriddenSettings + [ item ]}}"
+      loop: "{{ server_profiles[0].bios.overriddenSettings }}"
+      when: server_profiles[0].bios is defined and  server_profiles[0].bios.overriddenSettings is defined and item.id != "ProcCoreDisable" and item.id != "EnabledCoresPerProc"
+
+    - set_fact:
+        overriddenSettings: "{{ overriddenSettings + [ overriddenSetting ] }}"
+  
+    - debug:
+        msg: 
+          - "{{ overriddenSettings }}"
+
+    - name: Power Off the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "Off"
+                powerControl: "PressAndHold"
+      delegate_to: localhost
+
+    - name: Update Server Profile
+      oneview_server_profile:
+        config: "{{ config }}"
+        state: "present"
+        data:
+          name: "{{ server_profile_name }}"
+          affinity: "BayAndServer"
+          bios:
+            manageBios: true
+            overriddenSettings: "{{ overriddenSettings }}"
+      delegate_to: localhost
+      register: result
+
+    - name: Power On the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "On"
+                powerControl: "MomentaryPress"
+      delegate_to: localhost

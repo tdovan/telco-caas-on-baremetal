@@ -1,0 +1,135 @@
+# Fetch the server profile using name
+# Fetch the sas logical jbod data
+# create new_sas_logical_jbod data 
+# Note: deviceSlot is always "Mezz 1" as internal connection to drive enclosure
+
+- hosts: localhost
+  vars:
+    - server_profile_name: ''
+    - config: '{{ playbook_dir }}/{{ oneview_config }}'
+    - size_GB: 0                            #compulsary
+    - drive_technology: ''                  #compulsary
+    - drive_name: ''                        #compulsary
+    - num_physical_drives: 1                #optional, default is 1
+    - erase_data: true                      #optional, default is true
+    - persistent: true                      #optional, default is true
+    - id: 0                                 #for execution purpose only
+    - sas_logical_jbods: []                 #for execution purpose only
+  tasks:
+    - debug:
+        msg: "Mandatory input parameters server_profile_name, size_GB, drive_technology, drive_name"
+      when: server_profile_name == "" or size_GB == 0 or drive_technology == "" or drive_name == ""
+    - meta: end_play
+      when: server_profile_name == "" or size_GB == 0 or drive_technology == "" or drive_name == "" 
+
+
+    - name: Gather facts about a Server Profile by name
+      oneview_server_profile_facts:
+        config: "{{ config }}"
+        name: "{{server_profile_name}}"
+      delegate_to: localhost
+    - debug:
+        var: server_profiles
+
+    - debug: var=server_profiles[0].localStorage.sasLogicalJBODs
+      when:  server_profiles[0].localStorage is defined and server_profiles[0].localStorage.sasLogicalJBODs is defined
+
+    - set_fact:
+        server_profile_data: "{{ server_profiles[0] }}"
+      when: server_profiles|length > 0
+    - debug:
+        msg: "Server profile not found kindly check server profile name"
+      when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+    - meta: end_play
+      when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+  
+    - set_fact:
+        server_profile_uri: '{{ server_profiles[0].uri }}'
+
+    - name: Gather facts about all Server Hardwares
+      oneview_server_hardware_facts:
+        config: "{{ config }}"
+        params:
+          filter:
+            - serverProfileUri='{{ server_profile_uri }}'
+      delegate_to: localhost
+
+    - debug:
+        var: server_hardwares
+    - debug:
+        msg: "Unforseen error: Server hardware was not fetched"
+      when: server_hardwares|length == 0
+    - meta: end_play
+      when: server_hardwares|length == 0
+
+    - set_fact:
+        server_hardware_name: '{{ server_hardwares[0].name }}'
+
+    - set_fact:
+        sas_logical_jbods: "{{ server_profile_data.localStorage.sasLogicalJBODs }}"
+      when: server_profile_data.localStorage is defined and server_profile_data.localStorage.sasLogicalJBODs is defined
+    
+    - set_fact:
+        id: "{{ item.id }}"
+      loop: "{{ server_profile_data.localStorage.sasLogicalJBODs }}"
+      when:  server_profile_data.localStorage is defined and server_profile_data.localStorage.sasLogicalJBODs is defined and item.id > id
+
+    - set_fact:
+        id: "{{ id | int + 1 }}"
+
+    - debug:
+        msg: "{{ id }}"
+    - set_fact: 
+        new_sas_logical_jbod: >
+                               {"description": null,
+                                "deviceSlot": "Mezz 1",
+                                "driveMaxSizeGB": "{{ size_GB | int }}",
+                                "driveMinSizeGB": "{{ size_GB | int }}",
+                                "driveTechnology": "{{ drive_technology }}",
+                                "eraseData": "{{ erase_data }}",
+                                "id": "{{ id | int }}",
+                                "name":"{{ drive_name }}",
+                                "numPhysicalDrives": "{{ num_physical_drives | int }}",
+                                "persistent": "{{ persistent }}"}
+
+    - debug:
+        msg: "{{ new_sas_logical_jbod }}"
+    - set_fact:
+        sas_logical_jbods: "{{ sas_logical_jbods + [ new_sas_logical_jbod ] }}"
+    - debug:
+        msg: "{{ sas_logical_jbods }}"
+
+
+    - name: Power Off the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "Off"
+                powerControl: "PressAndHold"
+      delegate_to: localhost
+
+    - name: Add sas logical jbod connection to exisitng profile
+      oneview_server_profile:
+        config: "{{ config }}"
+        state: "present"
+        data:
+          name: "{{ server_profile_name }}"
+          localStorage:
+            sasLogicalJBODs: '{{ sas_logical_jbods }}' 
+      delegate_to: localhost
+      register: result
+    - debug: msg="{{ result.msg }}"   
+
+    - name: Power On the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "On"
+                powerControl: "MomentaryPress"
+      delegate_to: localhost

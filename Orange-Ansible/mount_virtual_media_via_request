@@ -1,0 +1,111 @@
+import requests
+import argparse
+import pprint
+import json
+
+from ansible.module_utils.basic import *
+
+
+ilo_manager_api = "/redfish/v1/Managers"
+ilo_system_api = "/redfish/v1/Systems"
+session = None
+
+
+def request_op(operation, host, suburi, request_headers, request_body, x_auth_token=None):
+	session = requests.Session()
+	session.trust_env = False
+	resp = None
+
+	reqUrl = "https://" + host + suburi 
+
+	if( x_auth_token ):
+		request_headers['X-Auth-Token'] = x_auth_token
+
+	if( operation.casefold() == 'get'):
+		 resp = session.get(reqUrl, headers=request_headers, verify=False)
+	elif( operation.casefold() == 'post'):
+		resp = session.post(reqUrl, data=request_body, headers=request_headers, verify=False)
+	elif( operation.casefold() == 'patch'):
+		resp = session.patch(reqUrl, data=request_body, headers=request_headers, verify=False)
+	elif( operation.casefold() == 'delete'):
+		resp = session.delete(reqUrl, headers=request_headers, verify=False)
+	
+	if isinstance(resp.status_code ,str):
+		# The response status received is a string. So converted to this format.
+		if (resp.status_code != str(200)):
+			raise Exception("Failed to do GET. Status code = {}\nError Message = {}.".format(resp.status_code, resp.text))
+			module.fail_json(msg=suburi+" Returned status code that is not 200")
+	else:
+		if (resp.status_code != 200):
+			raise Exception("Failed to do GET. Status code = {}\nError Message = {}.".format(resp.status_code, resp.text))
+			module.fail_json(msg=suburi+" Returned status code that is not 200")
+	
+	return resp.json()
+
+
+
+def do_get(host, ilo_api, headers, session_id):
+	return request_op('get', host, ilo_api, headers, None, session_id)
+
+def do_patch(host, ilo_api, headers, request_body, session_id):
+	return request_op('patch', host, ilo_api, headers, request_body, session_id)
+
+def mount_virtual_media( host, session_id, iso_url, disk_insert, boot_on_next_server_reset):
+	is_mounted = False
+	headers = { 'content-type': 'application/json', 'accept': 'application/json' }
+	# fetch ilo manager datausing session id
+	response = do_get(host, ilo_manager_api, headers, session_id)
+	for member in range(len(response["Members"])) :
+		#pprint.pprint(response["Members"][member]["@odata.id"])	
+		manager_member_url = response["Members"][member]["@odata.id"]
+		manager_member_response = do_get(host, manager_member_url, headers, session_id)
+		#pprint.pprint(manager_member_response)
+		if ( 'VirtualMedia' not in manager_member_response ):
+			print('Virtual media not available in Manager links')
+		else:
+			virtual_media_url = manager_member_response['VirtualMedia']['@odata.id']
+			#print(virtual_media_url)
+			virtual_media_response = do_get(host, virtual_media_url, headers, session_id)
+			#pprint.pprint(virtual_media_response)
+			for virtual_media_sub_member in range(len(virtual_media_response["Members"])):
+				virtual_media_sub_url = virtual_media_response["Members"][virtual_media_sub_member]["@odata.id"]
+				virtual_media_sub_response = do_get(host, virtual_media_sub_url, headers, session_id)
+				#pprint.pprint(virtual_media_sub_response)
+				if ( 'DVD' in virtual_media_sub_response['MediaTypes'] ):
+					if ( (virtual_media_sub_response['Image'].strip()) ):
+						#print(virtual_media_sub_response['Image'])
+						mount_setting = json.dumps({'Image': null , 'Inserted': false, 'Oem': { 'Hpe': { 'BootOnNextServerReset': False}}})
+						patch_response = do_patch(host, virtual_media_sub_url, headers, mount_setting, session_id)
+						#pprint.pprint(patch_response)
+					mount_setting = json.dumps({'Image': iso_url , 'Inserted': disk_insert, 'Oem': { 'Hpe': { 'BootOnNextServerReset': boot_on_next_server_reset}}})
+					patch_response = do_patch(host, virtual_media_sub_url, headers, mount_setting, session_id)
+					#pprint.pprint(patch_response)
+					is_mounted = True	
+	return is_mounted
+
+def main():
+	module = AnsibleModule(
+		argument_spec=dict(
+		name=dict(requirement=True, type='str'),
+		uri=dict(required=True, type='str'),
+		session_id=dict(required=True, type='str'),
+		iso_url=dict(required=True, type='str'),
+		boot_on_next_server_reset=dict(required=True, type='bool'),
+		disk_insert=dict(required=True, type='bool')
+	))
+
+	name = module.params['name']
+	session_id = module.params['session_id']
+	iso_url = module.params['iso_url']
+	host = module.params['uri']
+	boot_on_next_server_reset = module.params['boot_on_next_server_reset']
+	disk_insert = module.params['disk_insert']
+
+	response = mount_virtual_media( host, session_id, iso_url, disk_insert, boot_on_next_server_reset)
+	
+	print(response)
+	mount_response={'mount_status':response}
+	module.exit_json(changed=True, msg=mount_response)	
+
+if __name__ == '__main__':
+	 main()

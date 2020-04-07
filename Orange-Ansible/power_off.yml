@@ -1,0 +1,50 @@
+- hosts: localhost 
+  vars:
+    - config: "{{ playbook_dir }}/{{ oneview_config }}"
+    - server_profile_name: ""
+    - power_state: "Off"
+  tasks:
+    - name: Gather facts about a Server Profile by name
+      oneview_server_profile_facts:
+        config: "{{ config }}"
+        name: "{{server_profile_name}}"
+      delegate_to: localhost
+
+    - debug:
+        var: server_profiles
+
+    - set_fact:
+        server_profile_uri: '{{ server_profiles[0].uri }}'
+      when: server_profiles|length > 0
+
+    - debug:
+        msg: '{{ server_profile_uri }}'
+
+    - name: Gather facts about all Server Hardwares
+      oneview_server_hardware_facts:
+        config: "{{ config }}"
+        params:
+          filter:
+            - serverProfileUri='{{ server_profile_uri }}'
+      delegate_to: localhost
+
+    - debug:
+        var: server_hardwares
+
+    - set_fact:
+        server_hardware_name: '{{ server_hardwares[0].name }}'
+      when: server_hardwares|length > 0
+
+    - debug:
+        msg: '{{ server_hardware_name }}'
+
+    - name: Power Off the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "{{ power_state }}"
+                powerControl: "MomentaryPress"
+      delegate_to: localhost

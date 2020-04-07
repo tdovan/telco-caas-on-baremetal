@@ -1,0 +1,51 @@
+- hosts: localhost
+  vars:
+    - server_profile_template_name: ''
+    - state: compliant
+    - config: "{{ playbook_dir }}/{{ oneview_config }}"
+    - server_profile_names: []
+  tasks:
+    - name: Gather facts about a Server Profile Template by name
+      oneview_server_profile_template_facts:
+        config: "{{ config }}"
+        name: "{{ server_profile_template_name }}"
+      delegate_to: localhost
+
+    - debug: var=server_profile_templates
+
+    - set_fact:
+        server_profile_template_uri: "{{ server_profile_templates[0].uri }}"
+      when: server_profile_templates|length > 0
+#    - debug:
+#        msg: '{{ server_profile_template_uri }}'
+
+    - name: Gather facts about a Server Profile 
+      oneview_server_profile_facts:
+        config: "{{ config }}"
+      delegate_to: localhost
+    - debug: var=server_profiles
+    - debug: var=compliance_preview
+      when: server_profile_templates|length > 0
+
+    - set_fact:
+        server_profile_names: "{{ server_profile_names }} + [ '{{ item.name }}' ]"
+      when: item.serverProfileTemplateUri == server_profile_template_uri 
+      with_items: "{{ server_profiles }}"
+
+    - debug:
+        msg: '{{ server_profile_names }}'
+        
+
+    - name: Remediate compliance issues
+      oneview_server_profile:
+        config: "{{ config }}"
+        state: "{{ state }}"
+        data:
+          name: "{{ item }}"
+      delegate_to: localhost
+      register: result
+      with_items: "{{ server_profile_names }}"
+
+    - debug:
+        msg: "{{ item }}"
+      with_items: "{{ result }}"

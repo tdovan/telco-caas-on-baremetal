@@ -1,0 +1,21 @@
+- hosts: localhost
+  vars:
+    - server_profile_template: ''
+    - config: "{{ playbook_dir }}/{{ oneview_config }}"
+    - mode: 'UEFI'                    #default is UEFI
+    - pxe_boot_policy: 'Auto'         #default set to Auto
+    - manage_mode: true               #deault is true
+  tasks:
+    - name: Update bootMode from recently created
+      oneview_server_profile:
+        config: "{{ config }}"
+        state: present
+        data:
+          name: "{{ server_profile_name }}"
+          bootMode:
+            manageMode: "{{ manage_mode }}"
+            mode: "{{ mode }}" 
+            pxeBootPolicy: "{{ pxe_boot_policy }}"
+        params:
+          force: True # Supprted only for API version >= 600
+      delegate_to: localhost

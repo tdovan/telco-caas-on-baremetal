@@ -1,0 +1,214 @@
+# Fetch the server profile using name
+# Fetch the san storage data and the respective volume Attachement data
+# create san_volume_attachements data
+# Note: deviceSlot is always "Mezz 1" as internal connection to drive enclosure
+
+- hosts: localhost
+  vars:
+    - server_profile_name: ''
+    - config: '{{ playbook_dir }}/{{ oneview_config }}'
+    - volume_name: ''                       #compulsary
+    - storage_path_connection_names: []     #compulsary
+    - storage_system_name : ''              #compulsary
+    - storage_pool_name: ''                 #needed for private volumes only
+#    - storage_template_name: null           #needed for private volumes only
+    - provision_type: 'Thin'                #optional, needed for private volumes only
+    - size: 0                               #needed for private volumes only    
+    - is_shareable: true                    #optional, default is true- shared storage, set it to false to make it private storage
+    - shareable: true                       #optional, default is true- shared storage, set it to false to make it private storage
+    - is_permanent: true                    #optional, default is true- storage is erased on delete or permanent
+    - lun_type: 'Auto'                      #optional, default is Auto,  if Manual specify lun number
+    - lun_number: null                      #optional, default is null, if lun_type is Manual specify lun number
+    - boot_volume_priority: 'NotBootable'   #for execution purpose only. This use case covers only NotBootable volume attachment
+    - id: 0                                 #for execution purpose only
+    - san_volume_attachements: []           #for execution purpose only
+    - storage_paths: []                     #for execution purpose only
+    - storage_path_connections: []
+  tasks:
+   - debug:
+       msg: "Mandatory input parameters server_profile_name"
+     when: server_profile_name == "" 
+   - meta: end_play
+     when: server_profile_name == "" 
+      
+   - debug:
+       msg: "Mandatory input parameters for shared storage are volume_name storage_path_connection_names storage_pool_name, storage_system_name"
+     when: shareable == true and (volume_name == "" or storage_system_name == "")
+   - meta: end_play
+     when: shareable == true and (volume_name == "" or storage_system_name == "")
+     
+   - debug:
+       msg: "Mandatory input parameters volume_name, size, storage_path_connection_names, storage_pool_name, storage_system_name"
+     when: shareable == false and ( volume_name == "" or size == 0 or storage_path_connection_names|length == 0 or storage_pool_name == "" or storage_system_name == "")
+   - meta: end_play
+     when: shareable == false and ( volume_name == "" or size == 0 or storage_path_connection_names|length == 0 or storage_pool_name == "" or storage_system_name == "")
+
+   - set_fact:
+       storage_path_connections: "{{ storage_path_connection_names.split(',') }}"
+     when: storage_path_connection_names != '' 
+
+   - set_fact:
+       is_shareable: "{{ shareable | bool }}"
+     when: shareable != ''
+     
+   - debug:
+       msg: "Mandatory input parameters  if lun type is Manual you need to specify lun number"
+     when: lun_type != 'Auto' and lun_number is none
+   - meta: end_play
+     when: lun_type != 'Auto' and lun_number is none
+
+
+   - name: Gather facts about a Server Profile by name
+     oneview_server_profile_facts:
+       config: "{{ config }}"
+       name: "{{server_profile_name}}"
+     delegate_to: localhost
+
+   - debug: var=server_profiles[0].sanStorage.volumeAttachments
+     when:  server_profiles[0].sanStorage is defined and server_profiles[0].sanStorage.volumeAttachments is defined
+
+   - set_fact:
+       server_profile_data: "{{ server_profiles[0] }}"
+     when: server_profiles|length > 0
+   - debug:
+       msg: "Server profile not found kindly check server profile name"
+     when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+   - meta: end_play
+     when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+
+   - set_fact:
+       san_volume_attachements: "{{ server_profile_data.sanStorage.volumeAttachments }}"
+     when: server_profile_data.sanStorage is defined and server_profile_data.sanStorage.volumeAttachments is defined
+
+   - set_fact:
+       id: "{{ item.id }}"
+     loop: "{{ server_profile_data.sanStorage.volumeAttachments }}"
+     when:  server_profile_data.sanStorage is defined and server_profile_data.sanStorage.volumeAttachments is defined and item.id | int > id | int
+      
+   - set_fact:
+       id: "{{ id | int + 1 }}"
+
+   - debug:
+       msg: "{{ item.0.name }}"
+     with_nested:
+       - "{{ server_profiles[0].connectionSettings.connections }}"
+       - "{{ storage_path_connections }}"
+     when: item.0.name == item.1 and storage_path_connections|length > 0
+
+        
+   - set_fact:
+       storage_paths: '{{ [ {"connectionId": item.0.id | int , "isEnabled": true, "targetSelector": "Auto"} ] + storage_paths }}'
+     with_nested:
+       - "{{ server_profiles[0].connectionSettings.connections }}"
+       - "{{ storage_path_connections }}"
+     when: item.0.name == item.1
+
+
+   - set_fact:
+       storage_paths: "{{ storage_paths | list }}"
+      
+   - set_fact:
+       volume_data: {}
+       volume_properties: >
+                        {"name": "{{ volume_name }}",
+                        "storagePoolName": "{{ storage_pool_name }}",
+                        "provisioningType": "{{ provision_type }}"}
+     when: is_shareable == false
+   - debug:
+       msg: "{{ volume_properties }}"
+     when: is_shareable == false 
+   - set_fact: 
+       volume_data: "{{ volume_data | combine({'isPermanent': ( is_permanent | bool)}, recursive=true) }}"
+     when: is_shareable == false
+   
+   - set_fact:
+       volume_properties: "{{ volume_properties | combine({'isShareable': ( is_shareable | bool) }, recursive=true) }}"
+     when: is_shareable == false
+
+
+   - debug: msg="In here"
+   - set_fact:
+       volume_properties: "{{ volume_properties | combine({'size': ( size| int * 1073741824 ) }, recursive=true) }}"
+     when: is_shareable == false 
+
+   - set_fact: 
+       volume_data: "{{ volume_data | combine({'properties': volume_properties}, recursive=true) }}"
+     when: is_shareable == false
+
+   - debug:
+       msg: "{{ volume_data }}"
+     when: is_shareable == false 
+   - set_fact:
+       new_san_volume_attachement: >
+                              {"lunType": "{{ lun_type }}",
+                               "volumeStorageSystemName": "{{ storage_system_name }}"}
+     when: is_shareable == false 
+
+   - set_fact: 
+       new_san_volume_attachement: "{{ new_san_volume_attachement | combine({'id': (id | int)}, recursive=true) }}"
+     when: is_shareable == false 
+
+   - set_fact:
+       new_san_volume_attachement: "{{ new_san_volume_attachement | combine({'volume': volume_data}, recursive=true) }}"
+     when: is_shareable == false
+
+   - debug:
+       msg: "{{ new_san_volume_attachement }}"
+     when: is_shareable == false 
+   - set_fact:
+       new_san_volume_attachement: >
+                              {"id": "{{ id | int }}",
+                               "lunType": "{{ lun_type }}",
+                               "volumeStorageSystemName": "{{ storage_system_name }}",
+                               "volumeName": "{{ volume_name }}"}
+     when: is_shareable == true 
+
+   - set_fact:
+       new_san_volume_attachement: "{{ new_san_volume_attachement | combine({'lun': (lun_number | int)}, recursive=true) }}"
+     when: lun_type == 'Manual' 
+
+   - debug:
+       msg: "{{ new_san_volume_attachement }}" 
+     when: is_shareable == true
+   - debug:
+       msg: "storage path is needed for private store"
+     when: (storage_path_connections|length == 0 ) and is_sharable is false
+    
+   - debug:
+       msg:
+         - "{{ is_shareable }}"
+         - "{{ lun_type }}"
+     
+   - set_fact: 
+       new_san_volume_attachement: "{{ new_san_volume_attachement | combine({'storagePaths': storage_paths },recursive=true) }}"
+     when: (storage_path_connections|length > 0 ) or is_sharable is false
+
+   - debug:
+       msg: "{{ new_san_volume_attachement }}"
+   - set_fact:
+       san_volume_attachements: "{{ san_volume_attachements + [ new_san_volume_attachement ] }}"
+   - debug:
+       msg: "{{ san_volume_attachements }}"
+   
+   - set_fact:
+       server_profile_uri: '{{ server_profiles[0].uri }}'
+
+   - debug:
+       msg:
+         - "{{ san_volume_attachements }}"
+
+   - name: Add san volume connection to exisitng profile 
+     oneview_server_profile:
+       config: "{{ config }}"
+       state: "present"
+       data:
+         name: "{{ server_profile_name }}"
+         sanStorage:
+           manageSanStorage: true
+           hostOSType: 'Windows 2012 / WS2012 R2'
+           volumeAttachments: '{{ san_volume_attachements }}'
+     delegate_to: localhost
+     register: result
+     when: server_profiles is defined
+   - debug: msg="{{ result.msg }}"
+

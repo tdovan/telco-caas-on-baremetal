@@ -1,0 +1,115 @@
+- hosts: localhost
+  vars:
+    - server_profile_name: ''                            #compulsary
+    - config: '{{ playbook_dir }}/{{ oneview_config }}'
+    - fc_connection_name: 'fc'                                    #compulsary
+    - requestedMbps: Auto
+    - fc_network_name: ''                                         #compulsary
+    - connections: ''
+    - port_id: 'Auto'
+  tasks:
+    - name: Gather facts about a Server Profile by name
+      oneview_server_profile_facts:
+        config: "{{ config }}"
+        name: "{{server_profile_name}}"
+      delegate_to: localhost
+
+    - debug: var=server_profiles
+
+    - debug:
+        msg: "Server profile not found kindly check server profile name"
+      when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+    - meta: end_play
+      when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+
+    - set_fact:
+        server_profile_uri: '{{ server_profiles[0].uri }}'
+
+    - name: Gather facts about all Server Hardwares
+      oneview_server_hardware_facts:
+        config: "{{ config }}"
+        params:
+          filter:
+            - serverProfileUri='{{ server_profile_uri }}'
+      delegate_to: localhost
+
+    - debug:
+        var: server_hardwares
+    - debug:
+        msg: "Unforseen error: Server hardware was not fetched"
+      when: server_hardwares|length == 0
+    - meta: end_play
+      when: server_hardwares|length == 0
+   
+    - set_fact:
+        connections: "{{ server_profiles[0].connectionSettings.connections }}"
+    
+    - set_fact:
+        id: "{{ item.id }}"
+      loop: "{{ connections }}"
+      when:
+        - server_profiles is defined
+        - connections is defined
+    - set_fact:
+        id: "{{ id | int + 1 }}"
+    - set_fact:
+        new_connection: >
+                         {"id": "{{ id | int }}",
+                         "name": "{{ fc_connection_name }}",
+                         "functionType": "FibreChannel",
+                         "portId": "{{ port_id }}",
+                         "requestedMbps": "{{ requestedMbps }}",
+                         "networkName": "{{ fc_network_name }}"}
+      when: port_id == 'Auto'
+    - set_fact:
+        new_connection: >
+                         {"id": "{{ id | int }}",
+                         "name": "{{ fc_connection_name }}",
+                         "functionType": "FibreChannel",
+                         "portId": "{{ port_id }}",
+                         "networkName": "{{ fc_network_name }}"}
+      when: port_id != 'Auto'
+
+    - set_fact:
+        connections: "{{ connections + [ new_connection ] }}"
+    - debug:
+        msg="{{ connections }}"
+       
+    - set_fact:
+        server_hardware_name: '{{ server_hardwares[0].name }}'
+
+    - name: Power Off the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "Off"
+                powerControl: "PressAndHold"
+      delegate_to: localhost
+ 
+    - name: Add lan back up connection to exisitng profile
+      oneview_server_profile:
+        config: "{{ config }}"
+        state: "present"
+        data:
+          name: "{{ server_profile_name }}"
+          connectionSettings:
+           # manageConnections: '{{ true | bool }}'
+            connections: '{{ connections }}'
+      delegate_to: localhost
+      register: result
+    - debug: msg="{{ result.msg }}"   
+
+    - name: Power On the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "On"
+                powerControl: "MomentaryPress"
+      delegate_to: localhost
+

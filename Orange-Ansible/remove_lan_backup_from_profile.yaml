@@ -1,0 +1,114 @@
+# The playboook removes lan backup(fc network) by performing the following operations
+# - Fetch server profile by name
+# - Fetch connection data from server profile template
+
+- hosts: localhost
+  vars:
+    - server_profile_name: ''
+    - config: '{{ playbook_dir }}/{{ oneview_config }}'
+    - fc_connection_name: ''                             #compulsary
+    - fc_connection_names: []                            #for execution only
+    - connections: ''
+    - remove_connections: []
+  tasks:
+    - name: Gather facts about a Server Profile template by name
+      oneview_server_profile_facts:
+        config: "{{ config }}"
+        name: "{{server_profile_name}}"
+      delegate_to: localhost
+
+    - debug: var=server_profiles
+    
+    - debug:
+        msg: "Server profile not found kindly check server profile name"
+      when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+    - meta: end_play
+      when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+
+    - set_fact:
+        server_profile_uri: '{{ server_profiles[0].uri }}'
+
+    - name: Gather facts about all Server Hardwares
+      oneview_server_hardware_facts:
+        config: "{{ config }}"
+        params:
+          filter:
+            - serverProfileUri='{{ server_profile_uri }}'
+      delegate_to: localhost
+
+    - debug:
+        var: server_hardwares
+    - debug:
+        msg: "Unforseen error: Server hardware was not fetched"
+      when: server_hardwares|length == 0
+    - meta: end_play
+      when: server_hardwares|length == 0
+
+    #push connection to connection_names
+    - set_fact:
+        fc_connection_names: "{{ fc_connection_names + [ fc_connection_name ] }}"
+   
+    # Fetch connection data from server prfile 
+    - set_fact:
+        connections: "{{ server_profiles[0].connectionSettings.connections }}"
+        fc_connection_names: "{{ fc_connection_names | list }}"
+    
+
+    - set_fact:
+        remove_connections: "{{ remove_connections + [ item.0 ] }}"
+      when: item[0].name  ==  item[1]
+      with_nested:
+        - "{{ connections }}"
+        - "{{ fc_connection_names }}"
+    - debug:
+        msg: "{{ remove_connections }}"
+
+    - set_fact:
+        connections: "{{ connections | difference(remove_connections)  }}"
+    - debug:
+        msg: 
+          - "{{ connections }}"
+          - "{{ remove_connections }}"
+          - "{{ fc_connection_names }}"
+          - "{{ fc_connection_name }}"
+
+    - set_fact:
+        server_hardware_name: '{{ server_hardwares[0].name }}'
+
+    - name: Power Off the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "Off"
+                powerControl: "PressAndHold"
+      delegate_to: localhost
+
+        
+    - name: Remove lan back up connection from exisitng profile
+      oneview_server_profile:
+        config: "{{ config }}"
+        state: "present"
+        data:
+          name: "{{ server_profile_name }}"
+          connectionSettings:
+            #manageConnections: '{{ true | bool }}'
+            connections: '{{ connections }}'
+      delegate_to: localhost
+      register: result
+      when: server_profiles is defined
+    - debug: msg="{{ result.msg }}"   
+
+    - name: Power On the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "On"
+                powerControl: "MomentaryPress"
+      delegate_to: localhost
+

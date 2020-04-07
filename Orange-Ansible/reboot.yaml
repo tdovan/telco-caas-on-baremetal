@@ -1,0 +1,69 @@
+- hosts: localhost
+  vars:
+    - config_system_name: 'Synergy160'
+    - config: '{{ playbook_dir }}/{{ oneview_config }}'
+    - server_profile_name: ''
+  tasks:
+    - set_fact:
+        config: "{{ playbook_dir }}/{{ oneview_dl_config }}"
+      when: config_system_name == 'DL'
+    - name: Gather facts about a Server Profile by name
+      oneview_server_profile_facts:
+        config: "{{ config }}"
+        name: "{{server_profile_name}}"
+      delegate_to: localhost
+
+    - debug:
+        var: server_profiles
+    - debug:
+        msg: "Server profile not found kindly check server profile name"
+      when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+    - meta: end_play
+      when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+
+    - set_fact:
+        server_profile_uri: '{{ server_profiles[0].uri }}'
+      when: server_profiles|length > 0
+
+    - debug:
+        msg: '{{ server_profile_uri }}'
+
+    - name: Gather facts about all Server Hardwares
+      oneview_server_hardware_facts:
+        config: "{{ config }}"
+        params:
+          filter:
+            - serverProfileUri='{{ server_profile_uri }}'
+      delegate_to: localhost
+
+    - debug:
+        var: server_hardwares
+
+    - set_fact:
+        server_hardware_name: '{{ server_hardwares[0].name }}'
+      when: server_hardwares|length > 0
+
+    - debug:
+        msg: '{{ server_hardware_name }}'
+
+    - name: Power Off the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "Off"
+                powerControl: "PressAndHold"
+      delegate_to: localhost
+
+    - name: Power On the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "On"
+                powerControl: "MomentaryPress"
+      delegate_to: localhost

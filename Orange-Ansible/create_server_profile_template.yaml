@@ -1,0 +1,63 @@
+- hosts: localhost
+  vars:
+    - config: "{{ playbook_dir }}/{{ oneview_config }}"
+    - server_profile_template_name: ''                                          #compulsary
+    - server_hardware_type_name: ''                                             #optional
+    - initial_scope_names: []                                                   #compulsary
+    - src: "{{ playbook_dir }}/serverprofiletemplate/"
+    - file_name: ''
+    - initialScopeUris: [ "/rest/scopes/71a8542b-5404-4f06-861a-0f4e22d93f4c"]
+    - initial_scope_names_combined: []
+  tasks:
+    - meta: end_play
+      when: server_profile_template_name == ""
+    - set_fact:
+        src: "{{ src + file_name }}"
+    - debug:
+        msg:
+          - "{{ file_name }}"
+          - "{{ src }}"
+
+    - set_fact:     
+        file_contents: "{{lookup('file', src )}}"
+
+    - set_fact:
+        file_contents: "{{ file_contents | combine({'name': server_profile_template_name  }, recursive=true) }}"
+        server_profile_template_clean_data: {}
+    - debug:
+        msg: "{{ file_contents }}"
+
+    - set_fact:
+        initial_scope_names_combined: "{{ initial_scope_names.split(',') }}"
+      when: initial_scope_names != ''
+
+    - set_fact:
+        file_contents: "{{ file_contents | combine({'initialScopeNames': initial_scope_names_combined  }, recursive=true) }}"
+        #file_contents: "{{ file_contents | combine({'initialScopeUris': initialScopeUris  }, recursive=true) }}"
+      when: initial_scope_names_combined is defined
+
+    - set_fact:
+        file_contents: "{{ file_contents | combine({'serverHardwareTypeName': server_hardware_type_name}, recursive=true) }}"
+      when: server_hardware_type_name != ""
+
+    - set_fact:
+        server_profile_template_clean_data: "{{server_profile_template_clean_data |combine({item.key: item.value})}}"
+      when: "{{item.key not in ['scopesUri'] }}"
+      with_dict: "{{ file_contents}}"
+
+    - set_fact:
+        file_contents: "{{ server_profile_template_clean_data }}"
+
+    - debug:
+        msg: "{{ file_contents }}"
+
+
+    - name: Create a server profile template
+      oneview_server_profile_template:
+        config: "{{ config }}"
+        state: present
+        data: "{{ file_contents }}"
+        params:
+          force: "True" # Supprted only for API version >= 600
+      delegate_to: localhost
+

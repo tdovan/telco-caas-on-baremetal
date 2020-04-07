@@ -1,0 +1,136 @@
+# Fetch the server profile using name
+# Fetch the sas logical jbod data
+
+- hosts: localhost
+  vars:
+    - server_profile_name: ''      #compulsary
+    - config: '{{ playbook_dir }}/{{ oneview_config }}'
+    - drive_name: ''                        #compulsary
+    - sas_drive_names: []                   #for execution purpose only
+    - sas_logical_jbods: []                 #for execution purpose only
+    - remove_sas_logical_jbods: []          #for execution purpose only
+  tasks:
+    - debug:
+        msg: "Mandatory input parameters server_profile_name, sas_drive_names"
+      when: server_profile_name == "" or drive_name== ''
+    - meta: end_play
+      when: server_profile_name == "" or drive_name == ''
+
+
+    - name: Gather facts about a Server Profile by name
+      oneview_server_profile_facts:
+        config: "{{ config }}"
+        name: "{{server_profile_name}}"
+      delegate_to: localhost
+  
+    - debug:
+        msg: "Server profile not found kindly check server profile name"
+      when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+    - meta: end_play
+      when: server_profiles|length == 0 and server_profiles[0].name != server_profile_name
+
+    - set_fact:
+        server_profile_uri: '{{ server_profiles[0].uri }}'
+
+    - name: Gather facts about all Server Hardwares
+      oneview_server_hardware_facts:
+        config: "{{ config }}"
+        params:
+          filter:
+            - serverProfileUri='{{ server_profile_uri }}'
+      delegate_to: localhost
+
+    - debug:
+        var: server_hardwares
+    - debug:
+        msg: "Unforseen error: Server hardware was not fetched"
+      when: server_hardwares|length == 0
+    - meta: end_play
+      when: server_hardwares|length == 0
+
+    - set_fact:
+        server_hardware_name: '{{ server_hardwares[0].name }}'
+
+    - set_fact:
+        sas_drive_names: "{{ sas_drive_names + [ drive_name ] }}"
+
+    - debug: var=server_profiles[0].localStorage.sasLogicalJBODs
+      when:  server_profiles[0].localStorage is defined and server_profiles[0].localStorage.sasLogicalJBODs is defined
+
+    - debug: 
+        msg: "The server profile does not have sasLogicalJBODs, kindly verify "
+      when: server_profiles[0].localStorage.sasLogicalJBODs|length == 0
+
+    - meta: end_play
+      when: server_profiles[0].localStorage.sasLogicalJBODs|length == 0
+
+    - debug:
+        msg: "{{ item }}"
+      loop: "{{ sas_drive_names | list }}"
+    - set_fact:
+        server_profile_data: "{{ server_profiles[0] }}"
+        sas_drive_names: "{{ sas_drive_names | list }}"
+      when: server_profiles|length > 0
+    - meta: end_play
+      when: server_profiles|length == 0
+
+    - set_fact:
+        sas_logical_jbods: "{{ server_profile_data.localStorage.sasLogicalJBODs }}"
+      when: server_profile_data.localStorage is defined and server_profile_data.localStorage.sasLogicalJBODs is defined
+
+    - set_fact:
+        remove_sas_logical_jbods: "{{ remove_sas_logical_jbods + [ item.0 ] }}"
+      when: item[0].name  ==  item[1]
+      with_nested:
+        - "{{ sas_logical_jbods }}"
+        - "{{ sas_drive_names }}"
+    - debug:
+        msg: "{{ remove_sas_logical_jbods }}"
+
+    - debug: 
+        msg: "The server profile does not have sasLogicalJBODs name that is being passed, kindly verify "
+      when: remove_sas_logical_jbods|length == 0
+
+    - meta: end_play
+      when: remove_sas_logical_jbods|length == 0
+
+    - set_fact:
+        sas_logical_jbods: "{{ sas_logical_jbods | difference(remove_sas_logical_jbods)  }}"
+    - debug:
+        msg: "{{ sas_logical_jbods }}"
+
+    - name: Power Off the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "Off"
+                powerControl: "PressAndHold"
+      delegate_to: localhost
+        
+    - name: Remove sas logical jbod connection from exisitng profile 
+      oneview_server_profile:
+        config: "{{ config }}"
+        state: "present"
+        data:
+          name: "{{ server_profile_name }}"
+          localStorage:
+            sasLogicalJBODs: '{{ sas_logical_jbods }}'
+      delegate_to: localhost
+      register: result
+      when: server_profiles is defined
+    - debug: msg="{{ result.msg }}"   
+
+    - name: Power On the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "On"
+                powerControl: "MomentaryPress"
+      delegate_to: localhost
+

@@ -1,0 +1,8 @@
+[all]
+10.188.191.79 ansible_connection=local
+
+[all:vars]
+playbook_dir=./
+oneview_config=oneview_config160.json
+oneview_config_admin=oneview_config160Admin.json
+oneview_dl_config=oneview_dl_config.json

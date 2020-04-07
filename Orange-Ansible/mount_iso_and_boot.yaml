@@ -1,0 +1,104 @@
+- hosts: localhost
+  vars: 
+    - config: "{{ playbook_dir }}/{{ oneview_config }}"
+    - server_profile_name: ""
+    - iso_url: ""
+  tasks:
+    - name: Gather facts about a Server Profile by name
+      oneview_server_profile_facts:
+        config: "{{ config }}"
+        name: "{{server_profile_name}}"
+      delegate_to: localhost
+
+    - debug:
+        var: server_profiles
+
+    - set_fact:
+        server_profile_uri: '{{ server_profiles[0].uri }}'
+      when: server_profiles|length > 0
+
+    - debug:
+        msg: '{{ server_profile_uri }}'
+
+    - name: Gather facts about all Server Hardwares
+      oneview_server_hardware_facts:
+        config: "{{ config }}"
+        params:
+          filter:
+            - serverProfileUri='{{ server_profile_uri }}'
+      delegate_to: localhost
+
+    - debug:
+        var: server_hardwares
+
+    - set_fact:
+        server_hardware_name: '{{ server_hardwares[0].name }}'
+      when: server_hardwares|length > 0
+
+    - debug:
+        msg: '{{ server_hardware_name }}'
+
+    - name: Gather sso ilo url facts about a Server Hardware
+      oneview_server_hardware_facts:
+        config: "{{ config }}"
+        name: "{{ server_hardware_name }}"
+        options:
+          - remoteConsoleUrl
+      when: server_hardware_name != ""
+      delegate_to: localhost
+    - debug:
+        var: server_hardware_remote_console_url
+
+    - set_fact:
+        remote_console_url: "{{ server_hardware_remote_console_url.remoteConsoleUrl }}"
+      when: server_hardwares|length > 0
+    - set_fact:
+        split_uri_session: "{{ remote_console_url.split('&') }}"
+      when: server_hardwares|length > 0
+    - set_fact:
+        ilo_ip_address: "{{ split_uri_session[0].split('=')[1] }}"
+      when: server_hardwares|length > 0
+    - set_fact:
+        session: "{{ split_uri_session[1].split('=')[1] }}"
+      when: server_hardwares|length > 0
+
+
+    - name: Power Off the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+            name : '{{ server_hardware_name }}'
+            powerStateData:
+                powerState: "Off"
+                powerControl: "PressAndHold"
+      delegate_to: localhost
+
+    - name: Mount virtual media
+      mount_virtual_media_via_request:
+        name: Mount the iso to ilo for instalaltion
+        uri: "{{ ilo_ip_address }}"
+        session_id: "{{ session }}"
+        iso_url: "{{ iso_url }}"
+        boot_on_next_server_reset: True
+        disk_insert: True
+      register: mount_status
+      when:
+        - ilo_ip_address != ""
+        - session != ""
+      delegate_to: localhost
+#    - debug:
+#        msg: '{{ mount_status.msg }}'
+
+    - name: Power On the server hardware
+      oneview_server_hardware:
+        config: "{{ config }}"
+        state: power_state_set
+        data:
+          name: "{{ server_hardware_name }}"
+          powerStateData:
+            powerState: "On"
+            powerControl: "MomentaryPress"
+      when: server_hardware_name != ""
+      delegate_to: localhost
+

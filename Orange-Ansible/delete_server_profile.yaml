@@ -1,0 +1,15 @@
+- hosts: localhost
+  vars:
+    - server_profile_name: ''
+    - config: '{{ playbook_dir }}/{{ oneview_config }}'
+  tasks:
+    - name: Delete the Server Profile created from a Server Profile Template
+      oneview_server_profile:
+        config: "{{ config }}"
+        state: "absent"
+        data:
+          name: "{{ server_profile_name }}"
+      delegate_to: localhost
+      register: result
+
+    - debug: msg="{{ result.msg }}"
