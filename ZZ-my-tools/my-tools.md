@@ -1,10 +1,11 @@
 # as a System engineer
 ```
-tmux
+tmux ls
 ``` 
 
 ```
 grep, ag, lsof, nmap, net-tools, pciutils
+lsof -i :443
 ``` 
 
 ```
