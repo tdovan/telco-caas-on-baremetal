@@ -3,6 +3,9 @@ This tutorial walks through the set up of kubernetes on Bare Metal using the pro
 
 ![General workflow](images/general-workflow.png)
 
+
+![Telco CaaS architecture](images/telco-caas.png)
+
 # Target audience
 Anyone planning to support a Kubernetes in production. Could be system engineer, devops engineer, kubernetes operators.
 
