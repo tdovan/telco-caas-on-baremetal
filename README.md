@@ -57,7 +57,6 @@ conda activate python36
 cd /home/tdovan/workspace/github/ansible-synergy-3par
 ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/python36/bin/python" -i inventory/synergy-inventory 1-deploy-bfs-az-all.yaml --limit az1,az2,az3 --forks 20
 ansible-playbook -i inventory/synergy-inventory 2-configure-kubespray-nodes.yaml --limit az1,az2,az3
-ansible-playbook -i inventory/synergy-inventory 3-configure-multus.yml --limit az1,az2,az3
 ```
 ### 4.2.2/ Deploy k8s cluster with kubespray
 ```
