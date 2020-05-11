@@ -30,7 +30,7 @@ cd /home/tdovan/workspace/github/kubespray
 ansible-playbook -i inventory/orange/inventory.ini reset.yml -b
 ```
 
-### 4.1.2/Deprovision Bare Metal Server (aka oneview server profile)
+### 4.1.2/ Deprovision Bare Metal Server (aka oneview server profile)
 ```
 conda activate python36
 cd /home/tdovan/workspace/github/ansible-synergy-3par
@@ -109,7 +109,7 @@ k apply -f metallb.yaml
 k apply -f configmap.yaml
 ```
 
-### 4.3.3/Multi-homed pod with multus-cni
+### 4.3.3/ Multi-homed pod with multus-cni
 ```
 cd /home/tdovan/workspace/github/ansible-synergy-3par
 ansible-playbook -i inventory/synergy-inventory 3-configure-multus.yml --limit az1,az2,az3
@@ -127,7 +127,7 @@ k  exec -it pod-multus-1 -- ip a
 k  exec -it pod-multus-2 -- ip a
 ```
 
-### 4.3.4/Service Mesh with Istio
+### 4.3.4/ Service Mesh with Istio
 ```
 cd /home/tdovan/workspace/k8s-apps/istio/
 kubectl create namespace istio-system
