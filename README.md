@@ -181,12 +181,6 @@ calico bgp
 vyos
 ```
 
-### 4.3.5/ Connecting k8s cluster to core network L2/L3 (TODO)
-```
-TODO
-calico bgp
-vyos
-```
 ### 4.3.6/ NFD and CMK (TODO)
 ```
 TODO
