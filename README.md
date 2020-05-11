@@ -174,6 +174,49 @@ http://10.12.25.131:80/productpage (refresh page to round robin through services
 go to kiali dashbaord: http://10.12.25.132:20001 (admin/admin)
 ```
 
+### 4.3.5/ Connecting k8s cluster to core network L2/L3 (TODO)
+```
+TODO
+calico bgp
+vyos
+```
+
+### 4.3.5/ Connecting k8s cluster to core network L2/L3 (TODO)
+```
+TODO
+calico bgp
+vyos
+```
+### 4.3.6/ NFD and CMK (TODO)
+```
+TODO
+NFD: https://github.com/kubernetes-sigs/node-feature-discovery
+CMK: https://github.com/intel/CPU-Manager-for-Kubernetes
+
+Network : multus macvlan (ens3f1) + Calico (ens3f0)
+> activate interface ens3f1
+> install multus
+> enable macvlan on ens3f1
+> start pod
+> install trex
+
+```
+
+### 4.3.7/ Ingress traefik (TODO)
+```
+TODO
+```
+
+### 4.3.8/ Backup: Velero + Crunchy (TODO)
+```
+TODO
+```
+
+### 4.3.8/ Federation: KubeFedv2 (TODO)
+```
+TODO
+```
+
 
 # Detailed Step-by-Step
 I have break down each steps:
@@ -183,5 +226,7 @@ I have break down each steps:
 * [03-provision-bare-metal-server](03-provision-bare-metal-server/README.md)
 * [04-deploy-kubespray](04-deploy-kubespray/README.md)
 * [05-customize-kubernetes](05-customize-kubernetes/README.md)
+
+
 
 
