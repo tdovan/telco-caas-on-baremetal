@@ -175,7 +175,6 @@ go to kiali dashbaord: http://10.12.25.132:20001 (admin/admin)
 ```
 
 
-
 # Detailed Step-by-Step
 I have break down each steps:
 * [00-deploy-hardware](00-deploy-hardware/README.md)
