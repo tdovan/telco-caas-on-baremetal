@@ -1,5 +1,13 @@
 # 1/ Telco Container-as-a-Service on Baremetal
 This tutorial walks through the set up of kubernetes on Bare Metal using the projects from the opensource and the CNCF.
+but first, let's try to define what a  telco CaaS is:
+- provide the features to run network functions (data plane acceleration SR-IOV/DPDK...)
+- based on the industry standards (LinuxFoundation/CNCF, CNTT, ETSI, ONAP, opensource,..) and API driven
+- provide tools to operate the CaaS and NFs (lifecycle management)
+- provide tools to mesure the CaaS and NFs (telemetry, monitoring, alerting)
+- provide tools to secure the CaaS and NFs (business continuity, runtime, vault, SIEM)
+- provide tools to operate the NFs (Service Mesh, autoscaling ...)
+
 
 ![General workflow](images/general-workflow.png)
 
