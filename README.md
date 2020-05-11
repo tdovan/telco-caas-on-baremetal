@@ -1,4 +1,4 @@
-# Telco Container-as-a-Service on Baremetal
+# 1/ Telco Container-as-a-Service on Baremetal
 This tutorial walks through the set up of kubernetes on Bare Metal using the projects from the opensource and the CNCF.
 
 ![General workflow](images/general-workflow.png)
@@ -6,23 +6,23 @@ This tutorial walks through the set up of kubernetes on Bare Metal using the pro
 
 ![Telco CaaS architecture](images/telco-caas.png)
 
-# Target audience
+# 2/ Target audience
 Anyone planning to support a Kubernetes in production. Could be system engineer, devops engineer, kubernetes operators.
 
-# Prerequisites
+# 3/ Prerequisites
 For Bare metal, I'm using HPE Synergy Composable infrastructure with HPE OneView API and HPE 3PAR for strorage (block and persistent volume)
 Further investigation with redfish is in progress.
 
-# Quick Start
-## Deprovisionning k8s cluster (kubespray and bare metal servers)
-### 1-Uninstall kubespray
+# 4/ Quick Start
+## 4.1/ Deprovisionning k8s cluster (kubespray and bare metal servers)
+### 4.1.1/ Uninstall kubespray
 ```
 conda activate python36
 cd /home/tdovan/workspace/github/kubespray
 ansible-playbook -i inventory/orange/inventory.ini reset.yml -b
 ```
 
-### 2-Deprovision Bare Metal Server (aka oneview server profile)
+### 4.1.2/Deprovision Bare Metal Server (aka oneview server profile)
 ```
 conda activate python36
 cd /home/tdovan/workspace/github/ansible-synergy-3par
@@ -30,7 +30,7 @@ ansible-playbook -i inventory/synergy-inventory tasks/ov-poweroff-delete-serverp
 ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/python36/bin/python" -i inventory/synergy-inventory tasks/infra-deregister-dns.yml --limit az1,az2,az3
 ```
 
-### 3-Clear OneView alarm: usefull for beta unit . It clears alarm of the server otherwise oneview will not allow to re-provision.
+### 4.1.3/ Clear OneView alarm: usefull for beta unit . It clears alarm of the server otherwise oneview will not allow to re-provision.
 ```
 pwsh
 $az1=Connect-HPOVMgmt -Appliance az1.tdovan.co -UserName $username -Password $password
@@ -42,8 +42,8 @@ Get-HPOVServer -ApplianceConnection $az2 | Get-HPOVAlert -State active | Set-HPO
 Get-HPOVServer -ApplianceConnection $az3 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
 ```
 
-## Provisionning k8s cluster on Bare Metal
-### 1-Provisionning Bare Metal servers with HPE OneView
+## 4.2/ Provisionning k8s cluster on Bare Metal
+### 4.2.1/ Provisionning Bare Metal servers with HPE OneView
 ```
 conda activate python36
 cd /home/tdovan/workspace/github/ansible-synergy-3par
@@ -51,20 +51,20 @@ ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/pyth
 ansible-playbook -i inventory/synergy-inventory 2-configure-kubespray-nodes.yaml --limit az1,az2,az3
 ansible-playbook -i inventory/synergy-inventory 3-configure-multus.yml --limit az1,az2,az3
 ```
-### 2-Deploy k8s cluster with kubespray
+### 4.2.2/ Deploy k8s cluster with kubespray
 ```
 cd /home/tdovan/workspace/github/kubespray
 ansible-playbook -i inventory/orange/inventory.ini  --become --become-user=root cluster.yml --flush-cache
 ```
 
-### 3-Connecting to the cluster
+### 4.2.3/ Connecting to the cluster
 ```
 ansible-playbook -i inventory/synergy-inventory 3-merge-kubeconfig.yaml --limit localhost
 k get nodes
 ```
 
-## Customize k8s
-### 1-Persistent storage with HPE 3PAR CSI
+## 4.3/ Customize k8s
+### 4.3.1/ Persistent storage with HPE 3PAR CSI
 ```
 https://operatorhub.io/operator/hpe-csi-driver-operator
 https://scod.hpedev.io/csi_driver/index.html
@@ -93,7 +93,7 @@ k apply -f hpe-csi-pvc.yaml
 helm uninstall hpe-csi --namespace kube-system
 ``` 
 
-### 2-LoadBalancer as a Service with Metallb
+### 4.3.2/ LoadBalancer as a Service with Metallb
 ```
 cd /home/tdovan/workspace/k8s-apps/metallb
 k apply -f namespace.yaml
@@ -101,7 +101,7 @@ k apply -f metallb.yaml
 k apply -f configmap.yaml
 ```
 
-### 3-Multi-homed pod with multus-cni
+### 4.3.3/Multi-homed pod with multus-cni
 ```
 cd /home/tdovan/workspace/github/ansible-synergy-3par
 ansible-playbook -i inventory/synergy-inventory 3-configure-multus.yml --limit az1,az2,az3
@@ -119,7 +119,7 @@ k  exec -it pod-multus-1 -- ip a
 k  exec -it pod-multus-2 -- ip a
 ```
 
-### 4-Service Mesh with Istio
+### 4.3.4/Service Mesh with Istio
 ```
 cd /home/tdovan/workspace/k8s-apps/istio/
 kubectl create namespace istio-system
