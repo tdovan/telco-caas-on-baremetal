@@ -157,6 +157,6 @@ I have break down each steps:
 * [02-create-oneview-server-template](02-create-oneview-server-template/README.md)
 * [03-provision-bare-metal-server](03-provision-bare-metal-server/README.md)
 * [04-deploy-kubespray](04-deploy-kubespray/README.md)
-* [05-customzie-kubernetes](05-customzie-kubernetes/README.md)
+* [05-customize-kubernetes](05-customize-kubernetes/README.md)
 
 

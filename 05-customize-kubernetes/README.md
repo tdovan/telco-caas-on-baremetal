@@ -14,3 +14,6 @@ Ingress with traefik
 Backup/Restore with Velero
 Federation with KubeFedv2
 … lots more …
+
+![CNF service chaining](../images/vnf-service-chaining.png)
+![k8s securing with sysdig](../images/sysdig.png)
