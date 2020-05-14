@@ -179,11 +179,6 @@ go to kiali dashbaord: http://10.12.25.132:20001 (admin/admin)
 In Synergy Server Profile Template, enale virtual function (auto) at the Server Profile (Template) for Connections
 yum install pciutils
 
-check the number of SR-IOV VF
-lspci | grep Broadcom
-0c:00.0 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II Ethernet Multi Function (rev 11)
-0c:00.1 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II Ethernet Multi Function (rev 11)
-
 check if SR-IOV is enable
 ethtool -i ens3f0
 lspci -vvv -s 0000:0c:00.0
@@ -207,7 +202,15 @@ c:00.0 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II
         Kernel modules: bnx2x
 </snip>
 
-To change the number of VFs reset the number to 0 :
+check the number of active SR-IOV VF
+lspci | grep Broadcom
+0c:00.0 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II Ethernet Multi Function (rev 11)
+0c:00.1 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II Ethernet Multi Function (rev 11)
+
+check the max nb of VF supported:
+cat  /sys/class/net/ens3f0/device/sriov_totalvfs
+
+Change the number of VFs reset the number to 0 :
 for ens3f0
 echo 0 > /sys/class/net/ens3f0/device/sriov_numvfs
 echo 4 > /sys/class/net/ens3f0/device/sriov_numvfs
@@ -216,6 +219,7 @@ for ens3f1
 echo 0 > /sys/class/net/ens3f1/device/sriov_numvfs
 echo 4 > /sys/class/net/ens3f1/device/sriov_numvfs
 
+check the VF created
 lspci | grep Broadcom
 0c:00.0 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II Ethernet Multi Function (rev 11)
 0c:00.1 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II Ethernet Multi Function (rev 11)
@@ -229,6 +233,8 @@ lspci | grep Broadcom
 0c:09.3 Ethernet controller: Broadcom Inc. and subsidiaries NetXtreme II BCM57840 10/20 Gigabit Ethernet Virtual Function --> VF4 on ens3f1
 
 congrats! You now have 4 VF per interfaces !
+
+check the VF
 # ip link show ens3f0
 2: ens3f0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000
     link/ether 62:91:90:b0:02:e5 brd ff:ff:ff:ff:ff:ff
@@ -237,8 +243,10 @@ congrats! You now have 4 VF per interfaces !
     vf 2 MAC 00:00:00:00:00:00, tx rate 10000 (Mbps), max_tx_rate 10000Mbps, spoof checking on, link-state auto
     vf 3 MAC 00:00:00:00:00:00, tx rate 10000 (Mbps), max_tx_rate 10000Mbps, spoof checking on, link-state auto
 
+Configure the VF
 note the value: spoof checking on --> The SR-IOV MAC address anti-spoofing (a.k.a MAC spoofcheck) feature protects from malicious VM MAC address spoofing. This feature can be voluntary enable or disable 
 to enable|disable : ip link set ens3f0 vf 3 spoofchk on|off
+or echo "ON" > /sys/class/net/ens3f0/device/sriov/0/spoofcheck
 
 ```
 
