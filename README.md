@@ -174,14 +174,82 @@ http://10.12.25.131:80/productpage (refresh page to round robin through services
 go to kiali dashbaord: http://10.12.25.132:20001 (admin/admin)
 ```
 
-### 4.3.5/ Connecting k8s cluster to core network L2/L3 (TODO)
+### 4.3.5/ Implementing SR-IOV for Synergy CNA3820
+```
+In Synergy Server Profile Template, enale virtual function (auto) at the Server Profile (Template) for Connections
+yum install pciutils
+
+check the number of SR-IOV VF
+lspci | grep Broadcom
+0c:00.0 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II Ethernet Multi Function (rev 11)
+0c:00.1 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II Ethernet Multi Function (rev 11)
+
+check if SR-IOV is enable
+ethtool -i ens3f0
+lspci -vvv -s 0000:0c:00.0
+c:00.0 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II Ethernet Multi Function (rev 11)
+        Subsystem: Hewlett-Packard Company 3820C 10/20Gb Converged Network Adapter (NPAR 1.5)
+        Physical Slot: 3
+<snip>
+        Capabilities: [1c0 v1] Single Root I/O Virtualization (SR-IOV)
+                IOVCap: Migration-, Interrupt Message Number: 000
+                IOVCtl: Enable- Migration- Interrupt- MSE- ARIHierarchy+
+                IOVSta: Migration-
+                Initial VFs: 64, Total VFs: 64, Number of VFs: 0, Function Dependency Link: 00
+                VF offset: 8, stride: 1, Device ID: 16ad
+                Supported Page Size: 000005ff, System Page Size: 00000001
+                Region 0: Memory at 0000039fffc00000 (64-bit, prefetchable)
+                Region 4: Memory at 0000039fffe80000 (64-bit, prefetchable)
+                VF Migration: offset: 00000000, BIR: 0
+        Capabilities: [220 v1] #15
+        Capabilities: [300 v1] #19
+        Kernel driver in use: bnx2x
+        Kernel modules: bnx2x
+</snip>
+
+To change the number of VFs reset the number to 0 :
+for ens3f0
+echo 0 > /sys/class/net/ens3f0/device/sriov_numvfs
+echo 4 > /sys/class/net/ens3f0/device/sriov_numvfs
+
+for ens3f1
+echo 0 > /sys/class/net/ens3f1/device/sriov_numvfs
+echo 4 > /sys/class/net/ens3f1/device/sriov_numvfs
+
+lspci | grep Broadcom
+0c:00.0 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II Ethernet Multi Function (rev 11)
+0c:00.1 Ethernet controller: Broadcom Inc. and subsidiaries BCM57840 NetXtreme II Ethernet Multi Function (rev 11)
+0c:01.0 Ethernet controller: Broadcom Inc. and subsidiaries NetXtreme II BCM57840 10/20 Gigabit Ethernet Virtual Function --> VF1 on ens3f0
+0c:01.1 Ethernet controller: Broadcom Inc. and subsidiaries NetXtreme II BCM57840 10/20 Gigabit Ethernet Virtual Function --> VF2 on ens3f0
+0c:01.2 Ethernet controller: Broadcom Inc. and subsidiaries NetXtreme II BCM57840 10/20 Gigabit Ethernet Virtual Function --> VF3 on ens3f0
+0c:01.3 Ethernet controller: Broadcom Inc. and subsidiaries NetXtreme II BCM57840 10/20 Gigabit Ethernet Virtual Function --> VF4 on ens3f0
+0c:09.0 Ethernet controller: Broadcom Inc. and subsidiaries NetXtreme II BCM57840 10/20 Gigabit Ethernet Virtual Function --> VF1 on ens3f1
+0c:09.1 Ethernet controller: Broadcom Inc. and subsidiaries NetXtreme II BCM57840 10/20 Gigabit Ethernet Virtual Function --> VF2 on ens3f1
+0c:09.2 Ethernet controller: Broadcom Inc. and subsidiaries NetXtreme II BCM57840 10/20 Gigabit Ethernet Virtual Function --> VF3 on ens3f1
+0c:09.3 Ethernet controller: Broadcom Inc. and subsidiaries NetXtreme II BCM57840 10/20 Gigabit Ethernet Virtual Function --> VF4 on ens3f1
+
+congrats! You now have 4 VF per interfaces !
+# ip link show ens3f0
+2: ens3f0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000
+    link/ether 62:91:90:b0:02:e5 brd ff:ff:ff:ff:ff:ff
+    vf 0 MAC 00:00:00:00:00:00, tx rate 10000 (Mbps), max_tx_rate 10000Mbps, spoof checking on, link-state auto
+    vf 1 MAC 00:00:00:00:00:00, tx rate 10000 (Mbps), max_tx_rate 10000Mbps, spoof checking on, link-state auto
+    vf 2 MAC 00:00:00:00:00:00, tx rate 10000 (Mbps), max_tx_rate 10000Mbps, spoof checking on, link-state auto
+    vf 3 MAC 00:00:00:00:00:00, tx rate 10000 (Mbps), max_tx_rate 10000Mbps, spoof checking on, link-state auto
+
+note the value: spoof checking on --> The SR-IOV MAC address anti-spoofing (a.k.a MAC spoofcheck) feature protects from malicious VM MAC address spoofing. This feature can be voluntary enable or disable 
+to enable|disable : ip link set ens3f0 vf 3 spoofchk on|off
+
+```
+
+### ZZ/ Connecting k8s cluster to core network L2/L3 (TODO)
 ```
 TODO
 calico bgp
 vyos
 ```
 
-### 4.3.6/ NFD and CMK (TODO)
+### ZZ/ NFD and CMK (TODO)
 ```
 TODO
 NFD: https://github.com/kubernetes-sigs/node-feature-discovery
