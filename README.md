@@ -263,6 +263,10 @@ $ kubectl apply -f sysdig-agent-configmap.yaml -n sysdig-agent
 $ kubectl apply -f sysdig-agent-daemonset-v2.yaml -n sysdig-agent
 go to https://app.sysdigcloud.com/
 
+
+### ZZ/ Concourse-ci
+fly -t tutorial login -c http://concourse-pks1.tdovan.co/ -u test -p test
+
 ### ZZ/ Connecting k8s cluster to core network L2/L3 (TODO)
 ```
 TODO
