@@ -250,6 +250,19 @@ or echo "ON" > /sys/class/net/ens3f0/device/sriov/0/spoofcheck
 
 ```
 
+### 4.3.6/ Monitoring with sysidg
+$ kubectl config use-context hcp-cluster-1
+$ git clone https://github.com/draios/sysdig-cloud-scripts.git
+$ cd /home/tdovan/workspace/k8s-apps/sysdig-cloud-scripts/agent_deploy/kubernetes/
+$ kubectl create ns sysdig-agent
+$ kubectl create secret generic sysdig-agent --from-literal=access-key=ba02b324-98b8-478f-b6a4-3645f82fa0c7 -n sysdig-agent
+$ kubectl apply -f sysdig-agent-clusterrole.yaml -n sysdig-agent
+$ kubectl create serviceaccount sysdig-agent -n sysdig-agent
+$ kubectl create clusterrolebinding sysdig-agent --clusterrole=sysdig-agent --serviceaccount=sysdig-agent:sysdig-agent
+$ kubectl apply -f sysdig-agent-configmap.yaml -n sysdig-agent
+$ kubectl apply -f sysdig-agent-daemonset-v2.yaml -n sysdig-agent
+go to https://app.sysdigcloud.com/
+
 ### ZZ/ Connecting k8s cluster to core network L2/L3 (TODO)
 ```
 TODO
