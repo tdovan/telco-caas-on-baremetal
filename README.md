@@ -248,6 +248,13 @@ note the value: spoof checking on --> The SR-IOV MAC address anti-spoofing (a.k.
 to enable|disable : ip link set ens3f0 vf 3 spoofchk on|off
 or echo "ON" > /sys/class/net/ens3f0/device/sriov/0/spoofcheck
 
+
+--- sources
+https://github.com/intel/sriov-cni
+https://github.com/hustcat/sriov-cni
+https://github.com/intel/userspace-cni-network-plugin
+https://github.com/intel/container-experience-kits-demo-area/blob/master/docs/nfv-features-in-k8s/README.md#baremetal-container-model
+
 ```
 
 ### 4.3.6/ Monitoring with sysidg
