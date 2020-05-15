@@ -1,6 +1,8 @@
 # 1/ Telco Container-as-a-Service on Baremetal
+
 This tutorial walks through the set up of kubernetes on Bare Metal using the projects from the opensource and the CNCF.
 but first, let's try to define what a  telco CaaS is:
+
 - provide the features to run network functions (data plane acceleration SR-IOV/DPDK...)
 - based on the industry standards (LinuxFoundation/CNCF, CNTT, ETSI, ONAP, opensource,..) and API driven
 - provide tools to operate the CaaS and NFs (lifecycle management)
@@ -10,21 +12,24 @@ but first, let's try to define what a  telco CaaS is:
 
 ![General workflow](images/general-workflow.png)
 
-
 ![Telco CaaS architecture](images/telco-caas.png)
 
-# 2/ Target audience
+## 2/ Target audience
+
 Anyone planning to support a Kubernetes in production. Could be system engineer, devops engineer, kubernetes operators.
 
-# 3/ Prerequisites
+## 3/ Prerequisites
+
 For Bare metal, I'm using HPE Synergy Composable infrastructure with HPE OneView API and HPE 3PAR for strorage (block and persistent volume)
 Further investigation with redfish is in progress.
 
-# 4/ Quick Start
-## 4.1/ Deprovisionning k8s cluster (kubespray and bare metal servers)
-### 4.1.1/ Uninstall kubespray (5m)
+## 4/ Quick Start
 
-> uninstall 
+### 4.1/ Deprovisionning k8s cluster (kubespray and bare metal servers)
+
+#### 4.1.1/ Uninstall kubespray (5m)
+
+> uninstall
 
 ```bash
 conda activate python36
@@ -32,7 +37,7 @@ cd /home/tdovan/workspace/github/kubespray
 ansible-playbook -i inventory/orange/inventory.ini reset.yml -b
 ```
 
-### 4.1.2/ Deprovision Bare Metal Server (5m)
+#### 4.1.2/ Deprovision Bare Metal Server (5m)
 
 ```bash
 conda activate python36
@@ -41,7 +46,8 @@ ansible-playbook -i inventory/synergy-inventory tasks/ov-poweroff-delete-serverp
 ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/python36/bin/python" -i inventory/synergy-inventory tasks/infra-deregister-dns.yml --limit az1,az2,az3
 ```
 
-### 4.1.3/ Clear OneView alarm (1m)
+#### 4.1.3/ Clear OneView alarm (1m)
+
 > Useful when using Synergy beta unit. It clears alarm of the server otherwise oneview will not allow to re-provision without clearing the faults
 
 ```bash
@@ -57,15 +63,16 @@ PS /root> $az3=Connect-HPOVMgmt -Appliance az1.tdovan.co -UserName $username -Pa
 PS /root> Get-HPOVServer -ApplianceConnection $az1 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
 PS /root> Get-HPOVServer -ApplianceConnection $az2 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
 PS /root> Get-HPOVServer -ApplianceConnection $az3 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
-PS /root> Disconnect-HPOVMgmt -Appliance 
+PS /root> Disconnect-HPOVMgmt -Appliance
 
 > Clear alarm for a dedicated server hardware
 Get-HPOVServer -name "Encl1, bay 1*" -ApplianceConnection $az1 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
 
 ```
 
-## 4.2/ Provisionning k8s cluster on Bare Metal
-### 4.2.1/ Provisionning Bare Metal servers with HPE OneView (30m)
+### 4.2/ Provisionning k8s cluster on Bare Metal
+
+#### 4.2.1/ Provisionning Bare Metal servers with HPE OneView (30m)
 
 ```bash
 conda activate python36
@@ -73,13 +80,15 @@ cd /home/tdovan/workspace/github/ansible-synergy-3par
 ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/python36/bin/python" -i inventory/synergy-inventory 1-deploy-bfs-az-all.yaml --limit az1,az2,az3 --forks 20
 ansible-playbook -i inventory/synergy-inventory 2-configure-kubespray-nodes.yaml --limit az1,az2,az3
 ```
-### 4.2.2/ Deploy k8s cluster with kubespray (30m)
-```
+
+#### 4.2.2/ Deploy k8s cluster with kubespray (30m)
+
+```bash
 cd /home/tdovan/workspace/github/kubespray
 ansible-playbook -i inventory/orange/inventory.ini  --become --become-user=root cluster.yml --flush-cache
 ```
 
-### 4.2.3/ Connecting to the cluster (1m)
+#### 4.2.3/ Connecting to the cluster (1m)
 
 ```bash
 ansible-playbook -i inventory/synergy-inventory 3-merge-kubeconfig.yaml --limit localhost
@@ -87,12 +96,14 @@ ktx kubernetes-admin@cluster.local
 k get nodes
 ```
 
-## 4.3/ Customize k8s
-### 4.3.1/ Persistent storage with HPE 3PAR CSI (5m)
-this is the helm v3 chart but the operator is also available
-https://operatorhub.io/operator/hpe-csi-driver-operator
-https://scod.hpedev.io/csi_driver/index.html
-https://hub.helm.sh/charts/hpe-storage/hpe-csi-driver
+### 4.3/ Customize k8s
+
+#### 4.3.1/ Persistent storage with HPE 3PAR CSI (5m)
+
+>this is the helm v3 chart but the operator is also available
+<https://operatorhub.io/operator/hpe-csi-driver-operator>
+<https://scod.hpedev.io/csi_driver/index.html>
+<https://hub.helm.sh/charts/hpe-storage/hpe-csi-driver>
 
 ```bash
 helm repo add hpe https://hpe-storage.github.io/co-deployments
@@ -118,9 +129,9 @@ k get pods --selector 'app in (primera3par-csp,hpe-csi-node,hpe-csi-controller)'
 k apply -f hpe-csi-pvc.yaml
 
 helm uninstall hpe-csi --namespace kube-system
-``` 
+```
 
-### 4.3.2/ LoadBalancer as a Service with Metallb (3m)
+#### 4.3.2/ LoadBalancer as a Service with Metallb (3m)
 
 ```bash
 cd /home/tdovan/workspace/k8s-apps/metallb
@@ -151,9 +162,8 @@ ansible-playbook -i inventory/synergy-inventory 3-configure-multus.yml --limit a
 cd /home/tdovan/workspace/k8s-apps/multus-cni
 cat ./images/multus-daemonset.yml | kubectl apply -f -
 k get pods --selector 'app in (multus)'
-
-k apply -f hpe_networkattachment-macvlan-conf-1.yaml 
-k apply -f hpe_networkattachment-macvlan-conf-2.yaml 
+k apply -f hpe_networkattachment-macvlan-conf-1.yaml
+k apply -f hpe_networkattachment-macvlan-conf-2.yaml
 
 k apply -f hpe_pod-multus-1macvlan.yaml
 k exec -it pod-multus-1 -- ip a
@@ -261,16 +271,17 @@ ip link show ens3f0
     vf 3 MAC 00:00:00:00:00:00, tx rate 10000 (Mbps), max_tx_rate 10000Mbps, spoof checking on, link-state auto
 
 ## Configure the VF
-note the value: spoof checking on --> The SR-IOV MAC address anti-spoofing (a.k.a MAC spoofcheck) feature protects from malicious VM MAC address spoofing. This feature can be voluntary enable or disable 
+
+> note the value: spoof checking on --> The SR-IOV MAC address anti-spoofing (a.k.a MAC spoofcheck) feature protects from malicious VM MAC address spoofing. This feature can be voluntary enable or disable
 to enable|disable : ip link set ens3f0 vf 3 spoofchk on|off
 or echo "ON" > /sys/class/net/ens3f0/device/sriov/0/spoofcheck
-
 ```
+
 > sources
-https://github.com/intel/sriov-cni
-https://github.com/hustcat/sriov-cni
-https://github.com/intel/userspace-cni-network-plugin
-https://github.com/intel/container-experience-kits-demo-area/blob/master/docs/nfv-features-in-k8s/README.md#baremetal-container-model
+<https://github.com/intel/sriov-cni>
+<https://github.com/hustcat/sriov-cni>
+<https://github.com/intel/userspace-cni-network-plugin>
+<https://github.com/intel/container-experience-kits-demo-area/blob/master/docs/nfv-features-in-k8s/README.md#baremetal-container-model>
 
 ### 4.3.6/ Monitoring with sysidg
 
@@ -319,30 +330,33 @@ Network : multus macvlan (ens3f1) + Calico (ens3f0)
 ```
 
 ### 4.3.7/ Ingress traefik (TODO)
+
 ```bash
 TODO
 ```
 
 ### 4.3.8/ Backup: Velero + Crunchy (TODO)
+
 ```bash
 TODO
 ```
 
 ### 4.3.8/ Federation: KubeFedv2 (TODO)
+
 ```bash
 TODO
 ```
 
+## Detailed Step-by-Step
 
-# Detailed Step-by-Step
 I have break down each steps:
-* [00-deploy-hardware](00-deploy-hardware/README.md)
-* [01-create-golden-image](01-create-golden-image/README.md)
-* [02-create-oneview-server-template](02-create-oneview-server-template/README.md)
-* [03-provision-bare-metal-server](03-provision-bare-metal-server/README.md)
-* [04-deploy-kubespray](04-deploy-kubespray/README.md)
-* [05-customize-kubernetes](05-customize-kubernetes/README.md)
 
-
-
-
+- [00-deploy-hardware](00-deploy-hardware/README.md)
+- [01-create-golden-image](01-create-golden-image/README.md)
+- [02-create-oneview-server-template](02-create-oneview-server-template/README.md)
+- [03-provision-bare-metal-server](03-provision-bare-metal-server/README.md)
+- [04-deploy-kubespray](04-deploy-kubespray/README.md)
+- [05-customize-kubernetes](05-customize-kubernetes/README.md)
+  - Istio
+  - Calico
+  - Velero
