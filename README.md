@@ -38,7 +38,7 @@ ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/pyth
 ```
 
 ### 4.1.3/ Clear OneView alarm (1m)
-```
+```console
 > Useful when using Synergy beta unit. It clears alarm of the server otherwise oneview will not allow to re-provision without clearing the faults
 curl https://packages.microsoft.com/config/rhel/7/prod.repo |  sudo tee /etc/yum.repos.d/microsoft.repo
 sudo yum makecache
