@@ -40,16 +40,24 @@ ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/pyth
 
 ### 4.1.3/ Clear OneView alarm (1m)
 ```
-Useful when using Synergy beta unit. It clears alarm of the server otherwise oneview will not allow to re-provision without clearing the faults
-
+## Useful when using Synergy beta unit. It clears alarm of the server otherwise oneview will not allow to re-provision without clearing the faults
+curl https://packages.microsoft.com/config/rhel/7/prod.repo |  sudo tee /etc/yum.repos.d/microsoft.repo
+sudo yum makecache
+sudo yum install powershell
 pwsh
-$az1=Connect-HPOVMgmt -Appliance az1.tdovan.co -UserName $username -Password $password
-$az2=Connect-HPOVMgmt -Appliance az1.tdovan.co -UserName $username -Password $password
-$az3=Connect-HPOVMgmt -Appliance az1.tdovan.co -UserName $username -Password $password
+PS /root> Install-Module hponeview.500
+PS /root> $az1=Connect-HPOVMgmt -Appliance az1.tdovan.co -UserName $username -Password $password
+PS /root> $az2=Connect-HPOVMgmt -Appliance az1.tdovan.co -UserName $username -Password $password
+PS /root> $az3=Connect-HPOVMgmt -Appliance az1.tdovan.co -UserName $username -Password $password
 
-Get-HPOVServer -ApplianceConnection $az1 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
-Get-HPOVServer -ApplianceConnection $az2 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
-Get-HPOVServer -ApplianceConnection $az3 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
+PS /root> Get-HPOVServer -ApplianceConnection $az1 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
+PS /root> Get-HPOVServer -ApplianceConnection $az2 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
+PS /root> Get-HPOVServer -ApplianceConnection $az3 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
+PS /root> Disconnect-HPOVMgmt -Appliance 
+
+## for a dedicated server hardware
+Get-HPOVServer -name "Encl1, bay 1*" -ApplianceConnection $az1 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
+
 ```
 
 ## 4.2/ Provisionning k8s cluster on Bare Metal
