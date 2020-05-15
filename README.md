@@ -8,8 +8,6 @@ but first, let's try to define what a  telco CaaS is:
 - provide tools to secure the CaaS and NFs (business continuity, runtime, vault, SIEM)
 - provide tools to operate the NFs (Service Mesh, autoscaling ...)
 
-> test this block is for quote 1
-
 ![General workflow](images/general-workflow.png)
 
 
@@ -30,7 +28,6 @@ conda activate python36
 cd /home/tdovan/workspace/github/kubespray
 ansible-playbook -i inventory/orange/inventory.ini reset.yml -b
 ```
-> test this block is for quote 1
 
 ### 4.1.2/ Deprovision Bare Metal Server (5m)
 ```
@@ -42,7 +39,7 @@ ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/pyth
 
 ### 4.1.3/ Clear OneView alarm (1m)
 ```
-## Useful when using Synergy beta unit. It clears alarm of the server otherwise oneview will not allow to re-provision without clearing the faults
+> Useful when using Synergy beta unit. It clears alarm of the server otherwise oneview will not allow to re-provision without clearing the faults
 curl https://packages.microsoft.com/config/rhel/7/prod.repo |  sudo tee /etc/yum.repos.d/microsoft.repo
 sudo yum makecache
 sudo yum install powershell
@@ -57,7 +54,7 @@ PS /root> Get-HPOVServer -ApplianceConnection $az2 | Get-HPOVAlert -State active
 PS /root> Get-HPOVServer -ApplianceConnection $az3 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
 PS /root> Disconnect-HPOVMgmt -Appliance 
 
-## for a dedicated server hardware
+> Clear alarm for a dedicated server hardware
 Get-HPOVServer -name "Encl1, bay 1*" -ApplianceConnection $az1 | Get-HPOVAlert -State active | Set-HPOVAlert -Cleared
 
 ```
