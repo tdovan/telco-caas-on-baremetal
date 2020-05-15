@@ -8,7 +8,7 @@ but first, let's try to define what a  telco CaaS is:
 - provide tools to secure the CaaS and NFs (business continuity, runtime, vault, SIEM)
 - provide tools to operate the NFs (Service Mesh, autoscaling ...)
 
-> test this block is for quote
+> test this block is for quote 1
 
 ![General workflow](images/general-workflow.png)
 
@@ -30,6 +30,7 @@ conda activate python36
 cd /home/tdovan/workspace/github/kubespray
 ansible-playbook -i inventory/orange/inventory.ini reset.yml -b
 ```
+> test this block is for quote 1
 
 ### 4.1.2/ Deprovision Bare Metal Server (5m)
 ```
