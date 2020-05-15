@@ -8,6 +8,7 @@ but first, let's try to define what a  telco CaaS is:
 - provide tools to secure the CaaS and NFs (business continuity, runtime, vault, SIEM)
 - provide tools to operate the NFs (Service Mesh, autoscaling ...)
 
+> test this block is for quote
 
 ![General workflow](images/general-workflow.png)
 
