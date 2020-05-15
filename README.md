@@ -23,14 +23,18 @@ Further investigation with redfish is in progress.
 # 4/ Quick Start
 ## 4.1/ Deprovisionning k8s cluster (kubespray and bare metal servers)
 ### 4.1.1/ Uninstall kubespray (5m)
-```
+
+> uninstall 
+
+```bash
 conda activate python36
 cd /home/tdovan/workspace/github/kubespray
 ansible-playbook -i inventory/orange/inventory.ini reset.yml -b
 ```
 
 ### 4.1.2/ Deprovision Bare Metal Server (5m)
-```
+
+```bash
 conda activate python36
 cd /home/tdovan/workspace/github/ansible-synergy-3par
 ansible-playbook -i inventory/synergy-inventory tasks/ov-poweroff-delete-serverprofile.yaml --limit az1,az2,az3
@@ -38,8 +42,9 @@ ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/pyth
 ```
 
 ### 4.1.3/ Clear OneView alarm (1m)
-```console
 > Useful when using Synergy beta unit. It clears alarm of the server otherwise oneview will not allow to re-provision without clearing the faults
+
+```bash
 curl https://packages.microsoft.com/config/rhel/7/prod.repo |  sudo tee /etc/yum.repos.d/microsoft.repo
 sudo yum makecache
 sudo yum install powershell
@@ -61,7 +66,8 @@ Get-HPOVServer -name "Encl1, bay 1*" -ApplianceConnection $az1 | Get-HPOVAlert -
 
 ## 4.2/ Provisionning k8s cluster on Bare Metal
 ### 4.2.1/ Provisionning Bare Metal servers with HPE OneView (30m)
-```
+
+```bash
 conda activate python36
 cd /home/tdovan/workspace/github/ansible-synergy-3par
 ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/python36/bin/python" -i inventory/synergy-inventory 1-deploy-bfs-az-all.yaml --limit az1,az2,az3 --forks 20
@@ -74,7 +80,8 @@ ansible-playbook -i inventory/orange/inventory.ini  --become --become-user=root 
 ```
 
 ### 4.2.3/ Connecting to the cluster (1m)
-```
+
+```bash
 ansible-playbook -i inventory/synergy-inventory 3-merge-kubeconfig.yaml --limit localhost
 ktx kubernetes-admin@cluster.local
 k get nodes
@@ -82,13 +89,12 @@ k get nodes
 
 ## 4.3/ Customize k8s
 ### 4.3.1/ Persistent storage with HPE 3PAR CSI (5m)
-```
 this is the helm v3 chart but the operator is also available
 https://operatorhub.io/operator/hpe-csi-driver-operator
 https://scod.hpedev.io/csi_driver/index.html
 https://hub.helm.sh/charts/hpe-storage/hpe-csi-driver
 
-
+```bash
 helm repo add hpe https://hpe-storage.github.io/co-deployments
 helm repo update
 cd /home/tdovan/workspace/github/co-deployments/helm/values/csi-driver/v1.2.0
@@ -115,7 +121,8 @@ helm uninstall hpe-csi --namespace kube-system
 ``` 
 
 ### 4.3.2/ LoadBalancer as a Service with Metallb (3m)
-```
+
+```bash
 cd /home/tdovan/workspace/k8s-apps/metallb
 k apply -f namespace.yaml
 ./metallb-createsecret.sh
@@ -134,7 +141,8 @@ Access k8s dashboard https://10.12.25.130 (with chrome, type: 'thisisunsafe' to 
 ```
 
 ### 4.3.3/ Multi-homed pod with multus-cni (3 minutes)
-```
+
+```bash
 https://github.com/intel/multus-cni/blob/master/doc/how-to-use.md
 
 cd /home/tdovan/workspace/github/ansible-synergy-3par
@@ -155,7 +163,8 @@ k exec -it pod-multus-2 -- ip a
 ```
 
 ### 4.3.4/ Service Mesh with Istio (10m)
-```
+
+```bash
 cd /home/tdovan/workspace/k8s-apps/istio/
 kubectl create namespace istio-system
 istioctl manifest apply --set profile=demo
@@ -182,7 +191,8 @@ go to kiali dashbaord: http://10.12.25.132:20001 (admin/admin)
 ```
 
 ### 4.3.5/ Implementing SR-IOV for Synergy CNA3820
-```
+
+```bash
 ## In Synergy Server Profile Template, enale virtual function (auto) at the Server Profile (Template) for Connections
 yum install pciutils
 
@@ -255,16 +265,16 @@ note the value: spoof checking on --> The SR-IOV MAC address anti-spoofing (a.k.
 to enable|disable : ip link set ens3f0 vf 3 spoofchk on|off
 or echo "ON" > /sys/class/net/ens3f0/device/sriov/0/spoofcheck
 
-
---- sources
+```
+> sources
 https://github.com/intel/sriov-cni
 https://github.com/hustcat/sriov-cni
 https://github.com/intel/userspace-cni-network-plugin
 https://github.com/intel/container-experience-kits-demo-area/blob/master/docs/nfv-features-in-k8s/README.md#baremetal-container-model
 
-```
-
 ### 4.3.6/ Monitoring with sysidg
+
+```bash
 $ kubectl config use-context hcp-cluster-1
 $ git clone https://github.com/draios/sysdig-cloud-scripts.git
 $ cd /home/tdovan/workspace/k8s-apps/sysdig-cloud-scripts/agent_deploy/kubernetes/
@@ -276,20 +286,25 @@ $ kubectl create clusterrolebinding sysdig-agent --clusterrole=sysdig-agent --se
 $ kubectl apply -f sysdig-agent-configmap.yaml -n sysdig-agent
 $ kubectl apply -f sysdig-agent-daemonset-v2.yaml -n sysdig-agent
 go to https://app.sysdigcloud.com/
-
+```
 
 ### ZZ/ Concourse-ci
+
+```bash
 fly -t tutorial login -c http://concourse-pks1.tdovan.co/ -u test -p test
+```
 
 ### ZZ/ Connecting k8s cluster to core network L2/L3 (TODO)
-```
+
+```bash
 TODO
 calico bgp
 vyos
 ```
 
 ### ZZ/ NFD and CMK (TODO)
-```
+
+```bash
 TODO
 NFD: https://github.com/kubernetes-sigs/node-feature-discovery
 CMK: https://github.com/intel/CPU-Manager-for-Kubernetes
@@ -304,17 +319,17 @@ Network : multus macvlan (ens3f1) + Calico (ens3f0)
 ```
 
 ### 4.3.7/ Ingress traefik (TODO)
-```
+```bash
 TODO
 ```
 
 ### 4.3.8/ Backup: Velero + Crunchy (TODO)
-```
+```bash
 TODO
 ```
 
 ### 4.3.8/ Federation: KubeFedv2 (TODO)
-```
+```bash
 TODO
 ```
 
