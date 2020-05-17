@@ -308,9 +308,17 @@ fly -t tutorial login -c http://concourse-pks1.tdovan.co/ -u test -p test
 ### ZZ/ Connecting k8s cluster to core network L2/L3 (TODO)
 
 ```bash
-TODO
-calico bgp
-vyos
+calico bgp: https://docs.projectcalico.org/networking/bgp#configure-a-global-bgp-peer
+
+vyos:
+- download: https://marketplace.vmware.com/vsx/solutions/vyos-1-2-lts-1-2-0?ref=try-button
+- conf: https://wiki.vyos.net/wiki/Basic_setup
+configure
+set int ethernet eth1 address 10.12.29.110/24
+commit
+save
+
+GS3N: https://docs.gns3.com/1QXVIihk7dsOL7Xr7Bmz4zRzTsJ02wklfImGuHwTlaA4/index.html
 ```
 
 ### ZZ/ NFD and CMK (TODO)
