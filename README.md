@@ -1,4 +1,4 @@
-# 1/ Telco Container-as-a-Service on Baremetal
+# Telco Container-as-a-Service on Baremetal
 
 This tutorial walks through the set up of kubernetes on Bare Metal using the projects from the opensource and the CNCF.
 but first, let's try to define what a  telco CaaS is:
@@ -14,20 +14,20 @@ but first, let's try to define what a  telco CaaS is:
 
 ![Telco CaaS architecture](images/telco-caas.png)
 
-## 2/ Target audience
+## Target audience
 
 Anyone planning to support a Kubernetes in production. Could be system engineer, devops engineer, kubernetes operators.
 
-## 3/ Prerequisites
+## Prerequisites
 
 For Bare metal, I'm using HPE Synergy Composable infrastructure with HPE OneView API and HPE 3PAR for strorage (block and persistent volume)
 Further investigation with redfish is in progress.
 
-## 4/ Quick Start
+## Quick Start
 
-### 4.1/ Deprovisionning k8s cluster (kubespray and bare metal servers)
+### Deprovisionning k8s cluster (kubespray and bare metal servers)
 
-#### 4.1.1/ Uninstall kubespray (5m)
+#### Uninstall kubespray (5m)
 
 > uninstall
 
@@ -37,7 +37,7 @@ cd /home/tdovan/workspace/github/kubespray
 ansible-playbook -i inventory/orange/inventory.ini reset.yml -b
 ```
 
-#### 4.1.2/ Deprovision Bare Metal Server (5m)
+#### Deprovision Bare Metal Server (5m)
 
 ```bash
 conda activate python36
@@ -46,7 +46,7 @@ ansible-playbook -i inventory/synergy-inventory tasks/ov-poweroff-delete-serverp
 ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/python36/bin/python" -i inventory/synergy-inventory tasks/infra-deregister-dns.yml --limit az1,az2,az3
 ```
 
-#### 4.1.3/ Clear OneView alarm (1m)
+#### Clear OneView alarm (1m)
 
 > Useful when using Synergy beta unit. It clears alarm of the server otherwise oneview will not allow to re-provision without clearing the faults
 
@@ -70,9 +70,9 @@ Get-HPOVServer -name "Encl1, bay 1*" -ApplianceConnection $az1 | Get-HPOVAlert -
 
 ```
 
-### 4.2/ Provisionning k8s cluster on Bare Metal
+### Provisionning k8s cluster on Bare Metal
 
-#### 4.2.1/ Provisionning Bare Metal servers with HPE OneView (30m)
+#### Provisionning Bare Metal servers with HPE OneView (30m)
 
 ```bash
 conda activate python36
@@ -81,14 +81,14 @@ ansible-playbook -e "ansible_python_interpreter=/home/tdovan/anaconda3/envs/pyth
 ansible-playbook -i inventory/synergy-inventory 2-configure-kubespray-nodes.yaml --limit az1,az2,az3
 ```
 
-#### 4.2.2/ Deploy k8s cluster with kubespray (30m)
+#### Deploy k8s cluster with kubespray (30m)
 
 ```bash
 cd /home/tdovan/workspace/github/kubespray
 ansible-playbook -i inventory/orange/inventory.ini  --become --become-user=root cluster.yml --flush-cache
 ```
 
-#### 4.2.3/ Connecting to the cluster (1m)
+#### Connecting to the cluster (1m)
 
 ```bash
 ansible-playbook -i inventory/synergy-inventory 3-merge-kubeconfig.yaml --limit localhost
@@ -96,9 +96,9 @@ ktx kubernetes-admin@cluster.local
 k get nodes
 ```
 
-### 4.3/ Customize k8s
+### Customize k8s
 
-#### 4.3.1/ Persistent storage with HPE 3PAR CSI (5m)
+#### Persistent storage with HPE 3PAR CSI (5m)
 
 >this is the helm v3 chart but the operator is also available
 <https://operatorhub.io/operator/hpe-csi-driver-operator>
@@ -131,7 +131,7 @@ k apply -f hpe-csi-pvc.yaml
 helm uninstall hpe-csi --namespace kube-system
 ```
 
-#### 4.3.2/ LoadBalancer as a Service with Metallb (3m)
+#### LoadBalancer as a Service with Metallb (3m)
 
 ```bash
 cd /home/tdovan/workspace/k8s-apps/metallb
@@ -151,7 +151,7 @@ Access k8s dashboard https://10.12.25.130 (with chrome, type: 'thisisunsafe' to 
 --> TODO: ok when NOT using RBAC
 ```
 
-### 4.3.3/ Multi-homed pod with multus-cni (3 minutes)
+### Multi-homed pod with multus-cni (3 minutes)
 
 ```bash
 https://github.com/intel/multus-cni/blob/master/doc/how-to-use.md
@@ -172,7 +172,7 @@ k apply -f hpe_pod-multus-2macvlan.yaml
 k exec -it pod-multus-2 -- ip a
 ```
 
-### 4.3.4/ Service Mesh with Istio (10m)
+### Service Mesh with Istio (10m)
 
 ```bash
 cd /home/tdovan/workspace/k8s-apps/istio/
@@ -200,7 +200,7 @@ http://10.12.25.131:80/productpage (refresh page to round robin through services
 go to kiali dashbaord: http://10.12.25.132:20001 (admin/admin)
 ```
 
-### 4.3.5/ Implementing SR-IOV for Synergy CNA3820
+### Implementing SR-IOV for Synergy CNA3820
 
 ```bash
 ## In Synergy Server Profile Template, enale virtual function (auto) at the Server Profile (Template) for Connections
@@ -283,7 +283,7 @@ or echo "ON" > /sys/class/net/ens3f0/device/sriov/0/spoofcheck
 <https://github.com/intel/userspace-cni-network-plugin>
 <https://github.com/intel/container-experience-kits-demo-area/blob/master/docs/nfv-features-in-k8s/README.md#baremetal-container-model>
 
-### 4.3.6/ Monitoring with sysidg
+### Monitoring with sysidg
 
 ```bash
 $ kubectl config use-context hcp-cluster-1
@@ -299,7 +299,7 @@ $ kubectl apply -f sysdig-agent-daemonset-v2.yaml -n sysdig-agent
 go to https://app.sysdigcloud.com/
 ```
 
-### ZZ/ Concourse-ci
+### Concourse-ci
 
 ```bash
 fly -t tutorial login -c http://concourse-pks1.tdovan.co/ -u test -p test
@@ -321,7 +321,7 @@ save
 GS3N: https://docs.gns3.com/1QXVIihk7dsOL7Xr7Bmz4zRzTsJ02wklfImGuHwTlaA4/index.html
 ```
 
-### ZZ/ NFD and CMK (TODO)
+### NFD and CMK (TODO)
 
 ```bash
 TODO
@@ -337,19 +337,19 @@ Network : multus macvlan (ens3f1) + Calico (ens3f0)
 
 ```
 
-### 4.3.7/ Ingress traefik (TODO)
+### Ingress traefik (TODO)
 
 ```bash
 TODO
 ```
 
-### 4.3.8/ Backup: Velero + Crunchy (TODO)
+### Backup: Velero + Crunchy (TODO)
 
 ```bash
 TODO
 ```
 
-### 4.3.8/ Federation: KubeFedv2 (TODO)
+### Federation: KubeFedv2 (TODO)
 
 ```bash
 TODO
