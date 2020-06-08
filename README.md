@@ -25,6 +25,43 @@ Further investigation with redfish is in progress.
 
 ## Quick Start
 
+### Configure a vm
+
+```bash
+install centos7.6. I m using
+CentOS Linux release 7.6.1810 (Core)
+Linux iac.tdovan.co 3.10.0-957.el7.x86_64 #1 SMP Thu Nov 8 23:39:32 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux
+
+cd /tmp/
+curl -O https://repo.anaconda.com/archive/Anaconda3-5.3.1-Linux-x86_64.sh
+bash Anaconda3-5.3.1-Linux-x86_64.sh
+source ~/.bashrc
+conda info
+to update anaconda: conda update conda
+to delete anaconda: rm -rf ~/anaconda3
+
+conda create --name k8s python=3.6
+conda activate k8s
+
+add oneview-sdk
+pip install hpOneView
+cd /home/tdovan/workspace/github
+git clone https://github.com/HewlettPackard/oneview-ansible.git
+cd oneview-ansible
+pip install -r requirements.txt
+
+add 3par-sdk
+pip install hpe3par-sdk
+cd /home/tdovan/workspace/github
+git clone https://github.com/HewlettPackard/hpe3par_ansible_module
+
+Add oneview and 3par/primera to the ansible.cfg
+vi /etc/ansible/ansible.cfg
+library         = /home/tdovan/workspace/github/oneview-ansible/library:/home/tdovan/workspace/github/hpe3par_ansible_module
+module_utils    = /home/tdovan/workspace/github/oneview-ansible/library/module_utils:/root/anaconda3/envs/tf-3.6/lib/python3.6/site-packages:/root/anaconda3/lib/python3.7/site-packages
+
+```
+
 ### Deprovisionning k8s cluster (kubespray and bare metal servers)
 
 #### Uninstall kubespray (5m)
