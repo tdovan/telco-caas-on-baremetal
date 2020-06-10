@@ -40,6 +40,8 @@ conda info
 to update anaconda: conda update conda
 to delete anaconda: rm -rf ~/anaconda3
 
+pip install jmespath (to capture ip address of oneview server profile)
+
 conda create --name k8s python=3.6
 conda activate k8s
 
