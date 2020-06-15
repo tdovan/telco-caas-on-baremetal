@@ -145,18 +145,32 @@ k get nodes
 <https://hub.helm.sh/charts/hpe-storage/hpe-csi-driver>
 
 ```bash
+
+curl https://github.com/helm/helm/releases/tag/v3.2.3
 helm repo add hpe https://hpe-storage.github.io/co-deployments
 helm repo update
+helm repo ls
+helm install hpe-csi hpe-storage/hpe-csi-driver --namespace kube-system -f conf/csi-driver/hpe-3par-csi-values.yaml
+
+k get pods --selector 'app in (primera3par-csp,hpe-csi-node,hpe-csi-controller)' -n kube-system
+
+
+ssh 3paradm@$ip
+showvv *pvc*
+
+
+helm uninstall hpe-csi --namespace kube-system
+
+
+
 cd /home/tdovan/workspace/github/co-deployments/helm/values/csi-driver/v1.2.0
 kns kube-system
-helm install hpe-csi hpe-storage/hpe-csi-driver --namespace kube-system -f values-hpedemocenter.yaml
-k get pods --selector 'app in (primera3par-csp,hpe-csi-node,hpe-csi-controller)'
+
+
 
 k delete sc hpe-standard
 k apply -f 3par-sc.yaml
 k apply -f hpe-csi-pvc.yaml
-ssh 3paradm@$ip
-showvv *pvc*
 
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update

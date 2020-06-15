@@ -1,0 +1,25 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: 3par-sc
+provisioner: csi.hpe.com
+allowVolumeExpansion: true
+parameters:
+  csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/provisioner-secret-name: primera3par-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: kube-system
+  csi.storage.k8s.io/controller-publish-secret-name: primera3par-secret
+  csi.storage.k8s.io/controller-publish-secret-namespace: kube-system
+  csi.storage.k8s.io/node-stage-secret-name: primera3par-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: kube-system
+  csi.storage.k8s.io/node-publish-secret-name: primera3par-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: kube-system
+  # Uncomment for k8s 1.14 for resize support
+  #csi.storage.k8s.io/resizer-secret-name: nimble-secret
+  #csi.storage.k8s.io/resizer-secret-namespace: kube-system
+  # Uncomment for k8s 1.15 for resize support
+  csi.storage.k8s.io/controller-expand-secret-name: primera3par-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: kube-system
+  cpg: "Dev01"
+  provisioning_type: "tpvv"
+  accessProtocol: "fc"
