@@ -158,9 +158,33 @@ k get pods --selector 'app in (primera3par-csp,hpe-csi-node,hpe-csi-controller)'
 ssh 3paradm@$ip
 showvv *pvc*
 
-
 helm uninstall hpe-csi --namespace kube-system
 
+to use minio as with 3PAR CSI to expose S3/object storage
+https://hub.helm.sh/charts/bitnami/minio
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+helm install --set persistence.existingClaim=pvc-minio orange bitnami/minio
+
+MinIO can be accessed via port 9000 on the following DNS name from within your cluster:
+   orange-minio.default.svc.cluster.local
+
+To get your credentials run:
+export MINIO_ACCESS_KEY=$(kubectl get secret --namespace default orange-minio -o jsonpath="{.data.access-key}" | base64 --decode)
+export MINIO_SECRET_KEY=$(kubectl get secret --namespace default orange-minio -o jsonpath="{.data.secret-key}" | base64 --decode)
+
+To connect to your MinIO server using a client:
+- Run a MinIO Client pod and append the desired command (e.g. 'admin info server'):
+   kubectl run --namespace default orange-minio-client \
+     --rm --tty -i --restart='Never' \
+     --env MINIO_SERVER_ACCESS_KEY=$MINIO_ACCESS_KEY \
+     --env MINIO_SERVER_SECRET_KEY=$MINIO_SECRET_KEY \
+     --env MINIO_SERVER_HOST=orange-minio \
+     --image docker.io/bitnami/minio-client:2020.5.28-debian-10-r14 -- admin info server minio
+To access the MinIO web UI:
+- Get the MinIO URL:
+   echo "MinIO web URL: http://127.0.0.1:9000/minio"
+   kubectl port-forward --namespace default svc/orange-minio 9000:9000
 
 
 cd /home/tdovan/workspace/github/co-deployments/helm/values/csi-driver/v1.2.0
@@ -193,11 +217,11 @@ k apply -f namespace.yaml
 k apply -f metallb.yaml
 k apply -f configmap-130-139.yaml
 k get svc
-k kubectl patch svc kubernetes-dashboard -p '{"spec": {"type": "LoadBalancer"}}'
+k  patch svc kubernetes-dashboard -p '{"spec": {"type": "LoadBalancer"}}'
 k get svc
 k create serviceaccount dashboard-admin-sa
 k create clusterrolebinding dashboard-admin-sa --clusterrole=cluster-admin --serviceaccount=default:dashboard-admin-sa
-kubectl describe secret kubernetes-dashboard-token-zcklt
+k describe secret kubernetes-dashboard-token-zcklt
 
 Access k8s dashboard https://10.12.25.130 (with chrome, type: 'thisisunsafe' to skip ssl)
 
