@@ -23,7 +23,7 @@ Anyone planning to support a Kubernetes in production. Could be system engineer,
 For Bare metal, I'm using HPE Synergy Composable infrastructure with HPE OneView API and HPE 3PAR for strorage (block and persistent volume)
 Further investigation with redfish is in progress.
 
-## Quick Start
+## Quick Start tour
 
 ### Configure a vm
 
